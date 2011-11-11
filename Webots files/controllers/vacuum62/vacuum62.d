@@ -1,4 +1,4 @@
-vacuum62.o: vacuum62.c \
+vacuum62.o: vacuum62.cpp \
  /opt/webots/include/controller/c/webots/differential_wheels.h \
  /opt/webots/include/controller/c/webots/distance_sensor.h \
  /opt/webots/include/controller/c/webots/types.h \
