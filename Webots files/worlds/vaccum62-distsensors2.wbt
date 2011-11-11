@@ -12,9 +12,8 @@ WorldInfo {
   title "LIS-EPFL Blimp"
 }
 Viewpoint {
-  orientation -0.456972 -0.803795 -0.380907 1.57501
-  position 0.439015 1.14306 0.868885
-  follow "vacu"
+  orientation -0.575553 -0.583514 -0.572931 2.06002
+  position 2.81234 3.85099 2.68966
 }
 Background {
 }
@@ -693,8 +692,7 @@ DEF TABLE Solid {
   }
 }
 DEF VACU1 DifferentialWheels {
-  translation 1.15682 0.0492052 0.796012
-  rotation 0.000319387 1 -0.000676666 2.27385
+  translation 2.73835 0.0493962 2.74675
   children [
     Shape {
       appearance DEF CREATE_APPEARANCE Appearance {
