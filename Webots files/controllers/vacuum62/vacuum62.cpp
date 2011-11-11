@@ -21,7 +21,7 @@
 #include <webots/camera.h>
 
 /* device stuff */
-static WbDeviceTag camera; 
+// static WbDeviceTag camera; 
 
 #define BUMPERS_NUMBER 2
 #define BUMPER_LEFT 0
@@ -75,13 +75,6 @@ static int get_time_step() {
   if (time_step == -1)
     time_step = (int) wb_robot_get_basic_time_step();
   return time_step;
-}
-
-static void step() {
-  if (wb_robot_step(get_time_step()) == -1) {
-    wb_robot_cleanup();
-    exit(EXIT_SUCCESS);
-  }
 }
 
 static void init_devices() {
@@ -138,28 +131,6 @@ static bool is_there_a_distance_at_front() {
            (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_RIGHT]) > 0.0));
 }
 
-static void go_forward() {
-  wb_differential_wheels_set_speed(MAX_SPEED, MAX_SPEED);
-}
-
-static void go_backward() {
-  wb_differential_wheels_set_speed(-HALF_SPEED, -HALF_SPEED);
-}
-
-static void stop() {
-  wb_differential_wheels_set_speed(-NULL_SPEED, -NULL_SPEED);
-}
-
-static void passive_wait(double sec) {
-  double start_time = wb_robot_get_time();
-  
-  do 
-  {
-    step();
-  } 
-  while((start_time + sec) > wb_robot_get_time());
-}
-
 static double randdouble() {
   return rand() / ((double)RAND_MAX + 1);
 }
@@ -178,6 +149,17 @@ public:
   {
   }
   
+  void Init()
+  {
+    wb_robot_init();
+    wb_differential_wheels_enable_encoders(get_time_step());
+  }
+  
+  void Shutdown()
+  {
+    wb_differential_wheels_disable_encoders();
+  }
+  
   void Update(double _encl, double _encr)
   {
     double dl = _encl / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by left wheel in meter
@@ -191,14 +173,40 @@ public:
     m_y += distance * sin(m_theta);
   }
   
+  void Step() {
+    wb_differential_wheels_set_encoders(0.0, 0.0);
+    if (wb_robot_step(get_time_step()) == -1) {
+      wb_robot_cleanup();
+      exit(EXIT_SUCCESS);
+    }
+  }
+  
+  void PassiveWait(double sec) {
+    double start_time = wb_robot_get_time();
+    
+    do 
+    {
+      Step();
+    } 
+    while((start_time + sec) > wb_robot_get_time());
+  }
+  
+  void Forward() {
+    wb_differential_wheels_set_speed(MAX_SPEED, MAX_SPEED);
+  }
+
+  void Backward() {
+    wb_differential_wheels_set_speed(-HALF_SPEED, -HALF_SPEED);
+  }
+
+  void Stop() {
+    wb_differential_wheels_set_speed(-NULL_SPEED, -NULL_SPEED);
+  }
+  
   void Turn(double angle)
   {
-    stop();
-    
-    wb_differential_wheels_enable_encoders(get_time_step());
-    wb_differential_wheels_set_encoders(0.0, 0.0);
-    
-    step();
+    Stop();
+    Step();
     
     double neg = (angle < 0.0) ? -1.0 : 1.0;
     
@@ -208,8 +216,7 @@ public:
     double cur = start;
     do 
     {
-      wb_differential_wheels_set_encoders(0.0, 0.0);
-      step();
+      Step();
         
       double l = wb_differential_wheels_get_left_encoder();
       double r = wb_differential_wheels_get_right_encoder();
@@ -219,11 +226,9 @@ public:
     } 
     while (fabs(cur - start) < fabs(angle));
     
-    stop();
+    Stop();
     
-    wb_differential_wheels_disable_encoders();
-    
-    step();
+    Step();
   }
 };
 
@@ -231,21 +236,21 @@ public:
 int main(int argc, char **argv)
 {
   Robot r(0,0,0);
-
-  wb_robot_init();
-  
+ 
+  r.Init();
+ 
   printf("Default controller of the iRobot Create robot started...\n");
   
   init_devices();
   
-  camera = wb_robot_get_device("camera");
-  wb_camera_enable(camera,get_time_step());
+  // camera = wb_robot_get_device("camera");
+  // wb_camera_enable(camera,get_time_step());
   
   srand(time(NULL));
   
   wb_led_set(leds[LED_ON], true);
   
-  passive_wait(0.5);
+  r.PassiveWait(0.5);
 
   while (true) {
     if (is_there_a_virtual_wall()) 
@@ -256,15 +261,15 @@ int main(int argc, char **argv)
     else if (is_there_a_collision_at_left()) 
     {    
       printf("Left collision detected\n");
-      go_backward();
-      passive_wait(0.5);
+      r.Backward();
+      r.PassiveWait(0.5);
       r.Turn(M_PI * randdouble());
     } 
     else if (is_there_a_collision_at_right()) 
     {    
       printf("Right collision detected\n");
-      go_backward();
-      passive_wait(0.5);
+      r.Backward();
+      r.PassiveWait(0.5);
       r.Turn(-M_PI * randdouble());
     }
     /*else if (is_there_a_distance_at_left()) 
@@ -292,7 +297,9 @@ int main(int argc, char **argv)
         if (is_there_a_distance_at_right())
         {
           printf("Going backwards\n");
-          go_backward();
+          r.Backward();
+          r.PassiveWait(0.5);
+          r.Turn(-M_PI / 2);
         }
         else
         {
@@ -306,17 +313,19 @@ int main(int argc, char **argv)
         r.Turn(-M_PI / 2);
       }
     
-      passive_wait(0.5);
+      r.PassiveWait(0.5);
     } 
     else 
     {    
-      go_forward();
+      r.Forward();
     }
     
-    wb_camera_get_image(camera);
+    // wb_camera_get_image(camera);
     fflush_ir_receiver();
-    step();
+    r.Step();
   };
+  
+  r.Shutdown();
   
   return EXIT_SUCCESS;
 }
