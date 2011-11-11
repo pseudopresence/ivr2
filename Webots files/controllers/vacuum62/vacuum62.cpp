@@ -160,10 +160,12 @@ public:
     wb_differential_wheels_disable_encoders();
   }
   
-  void Update(double _encl, double _encr)
+  void UpdateOdometry()
   {
-    double dl = _encl / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by left wheel in meter
-    double dr = _encr / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by right wheel in meter
+    double encl = wb_differential_wheels_get_left_encoder();
+    double encr = wb_differential_wheels_get_right_encoder();
+    double dl = encl / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by left wheel in meter
+    double dr = encr / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by right wheel in meter
     
     double orientation = (dl - dr) / AXLE_LENGTH; // delta orientation in radian
     double distance = (dl + dr) / 2;
@@ -179,6 +181,7 @@ public:
       wb_robot_cleanup();
       exit(EXIT_SUCCESS);
     }
+    UpdateOdometry();
   }
   
   void PassiveWait(double sec) {
@@ -217,11 +220,6 @@ public:
     do 
     {
       Step();
-        
-      double l = wb_differential_wheels_get_left_encoder();
-      double r = wb_differential_wheels_get_right_encoder();
-      
-      Update(l, r);
       cur = m_theta;
     } 
     while (fabs(cur - start) < fabs(angle));
