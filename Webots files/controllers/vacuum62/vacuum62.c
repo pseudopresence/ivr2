@@ -22,7 +22,6 @@
 
 /* device stuff */
 static WbDeviceTag camera; 
-//static WbDeviceTag _camera;   // for displaying camera images
 
 #define BUMPERS_NUMBER 2
 #define BUMPER_LEFT 0
@@ -33,13 +32,13 @@ static const char *bumpers_name[BUMPERS_NUMBER] = {
   "bumper_right"
 };
 
-#define CLIFF_SENSORS_NUMBER 4
-#define CLIFF_SENSOR_LEFT 0
-#define CLIFF_SENSOR_FRONT_LEFT 1
-#define CLIFF_SENSOR_FRONT_RIGHT 2
-#define CLIFF_SENSOR_RIGHT 3
-static WbDeviceTag cliff_sensors[CLIFF_SENSORS_NUMBER];
-static const char *cliff_sensors_name[CLIFF_SENSORS_NUMBER] = {
+#define DISTANCE_SENSORS_NUMBER 4
+#define DISTANCE_SENSOR_LEFT 0
+#define DISTANCE_SENSOR_FRONT_LEFT 1
+#define DISTANCE_SENSOR_FRONT_RIGHT 2
+#define DISTANCE_SENSOR_RIGHT 3
+static WbDeviceTag distance_sensors[DISTANCE_SENSORS_NUMBER];
+static const char *distance_sensors_name[DISTANCE_SENSORS_NUMBER] = {
   "dist_left",
   "dist_front_left",
   "dist_front_right",
@@ -91,18 +90,18 @@ static void init_devices() {
   receiver = wb_robot_get_device(receiver_name);
   wb_receiver_enable(receiver, get_time_step());
 
-  for (i=0; i<LEDS_NUMBER; i++) {
+  for (i=0; i < LEDS_NUMBER; i++) {
     leds[i] = wb_robot_get_device(leds_name[i]);
   }
 
-  for (i=0; i<BUMPERS_NUMBER; i++) {
+  for (i=0; i < BUMPERS_NUMBER; i++) {
     bumpers[i] = wb_robot_get_device(bumpers_name[i]);
     wb_touch_sensor_enable(bumpers[i], get_time_step());
   }
 
-  for (i=0; i<CLIFF_SENSORS_NUMBER; i++) {
-    cliff_sensors[i] = wb_robot_get_device(cliff_sensors_name[i]);
-    wb_distance_sensor_enable(cliff_sensors[i], get_time_step());
+  for (i=0; i < DISTANCE_SENSORS_NUMBER; i++) {
+    distance_sensors[i] = wb_robot_get_device(distance_sensors_name[i]);
+    wb_distance_sensor_enable(distance_sensors[i], get_time_step());
   }
   
 }
@@ -124,25 +123,19 @@ static bool is_there_a_virtual_wall() {
   return (wb_receiver_get_queue_length(receiver) > 0);
 }
 
-static bool is_there_a_cliff_at_left() {
-  return !(
-    wb_distance_sensor_get_value(cliff_sensors[CLIFF_SENSOR_LEFT]) > 0.0 &&
-    wb_distance_sensor_get_value(cliff_sensors[CLIFF_SENSOR_FRONT_LEFT]) > 0.0
-  );
+static bool is_there_a_distance_at_left() {
+  return !((wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_LEFT]) > 0.0) &&
+           (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_LEFT]) > 0.0));
 }
 
-static bool is_there_a_cliff_at_right() {
-  return !(
-    wb_distance_sensor_get_value(cliff_sensors[CLIFF_SENSOR_RIGHT]) > 0.0 &&
-    wb_distance_sensor_get_value(cliff_sensors[CLIFF_SENSOR_FRONT_RIGHT]) > 0.0
-  );
+static bool is_there_a_distance_at_right() {
+  return !((wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]) > 0.0) &&
+           (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_RIGHT]) > 0.0));
 }
 
-static bool is_there_a_cliff_at_front() {
-  return !(
-    wb_distance_sensor_get_value(cliff_sensors[CLIFF_SENSOR_FRONT_LEFT]) > 0.0 &&
-    wb_distance_sensor_get_value(cliff_sensors[CLIFF_SENSOR_FRONT_RIGHT]) > 0.0
-  );
+static bool is_there_a_distance_at_front() {
+  return !((wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_LEFT]) > 0.0) &&
+           (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_RIGHT]) > 0.0));
 }
 
 static void go_forward() {
@@ -159,33 +152,50 @@ static void stop() {
 
 static void passive_wait(double sec) {
   double start_time = wb_robot_get_time();
-  do {
+  
+  do 
+  {
     step();
-  } while(start_time + sec > wb_robot_get_time());
+  } 
+  while((start_time + sec) > wb_robot_get_time());
 }
 
 static double randdouble() {
-  return rand()/((double)RAND_MAX+1);
+  return rand() / ((double)RAND_MAX + 1);
 }
 
 static void turn(double angle) {
   stop();
+  
   wb_differential_wheels_enable_encoders(get_time_step());
   wb_differential_wheels_set_encoders(0.0, 0.0);
+  
   step();
-  double neg = (angle < 0.0)? -1.0: 1.0;
+  
+  double neg = (angle < 0.0) ? -1.0 : 1.0;
+  
   wb_differential_wheels_set_speed(neg*HALF_SPEED, -neg*HALF_SPEED);
+  
   double orientation;
-  do {
+  
+  do 
+  {
     double l = wb_differential_wheels_get_left_encoder();
     double r = wb_differential_wheels_get_right_encoder();
+    
     double dl = l / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by left wheel in meter
     double dr = r / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by right wheel in meter
+    
     orientation = neg * (dl - dr) / AXLE_LENGTH; // delta orientation in radian
+    
     step();
-  } while (orientation < neg*angle);
+  } 
+  while (orientation < neg*angle);
+  
   stop();
+  
   wb_differential_wheels_disable_encoders();
+  
   step();
 }
 
@@ -194,51 +204,85 @@ int main(int argc, char **argv)
 {
   wb_robot_init();
   
-  printf("Testing\n");
   printf("Default controller of the iRobot Create robot started...\n");
   
   init_devices();
-  //_camera = wb_robot_get_device("camera");
+  
   camera = wb_robot_get_device("camera");
   wb_camera_enable(camera,get_time_step());
   
   srand(time(NULL));
   
   wb_led_set(leds[LED_ON], true);
+  
   passive_wait(0.5);
 
   while (true) {
-    if (is_there_a_virtual_wall()) {
+    if (is_there_a_virtual_wall()) 
+    {    
       printf("Virtual wall detected\n");
       turn(M_PI);
-    } else if (is_there_a_cliff_at_left()) {
-      printf("Left cliff detected\n");
-      go_backward();
-      passive_wait(0.5);
-      turn(M_PI*randdouble());
-    } else if (is_there_a_collision_at_left()) {
+    } 
+    else if (is_there_a_collision_at_left()) 
+    {    
       printf("Left collision detected\n");
       go_backward();
       passive_wait(0.5);
-      turn(M_PI*randdouble());
-    } else if (is_there_a_collision_at_right()) {
+      turn(M_PI * randdouble());
+    } 
+    else if (is_there_a_collision_at_right()) 
+    {    
       printf("Right collision detected\n");
       go_backward();
       passive_wait(0.5);
-      turn(-M_PI*randdouble());
-    } else if (is_there_a_cliff_at_right()) {
-      printf("Right cliff detected\n");
+      turn(-M_PI * randdouble());
+    }
+    /*else if (is_there_a_distance_at_left()) 
+    {    
+      printf("Left distance detected\n");
       go_backward();
       passive_wait(0.5);
-      turn(-M_PI*randdouble());
-    } else if (is_there_a_cliff_at_front()) {
-      printf("Front cliff detected\n");
+      turn(M_PI * randdouble());
+    }
+    else if (is_there_a_distance_at_right()) 
+    {    
+      printf("Right distance detected\n");
       go_backward();
       passive_wait(0.5);
-      turn(-M_PI*randdouble());
-    } else {
+      turn(-M_PI * randdouble());
+    } */
+    else if (is_there_a_distance_at_front()) 
+    {
+    
+      printf("Front distance detected\n");
+      //go_backward();
+      
+      if (is_there_a_distance_at_left())
+      {
+        if (is_there_a_distance_at_right())
+        {
+          printf("Going backwards\n");
+          go_backward();
+        }
+        else
+        {
+          printf("Turning to the right\n");
+          turn(M_PI / 2);
+        }
+      }
+      else
+      {
+        printf("Turning to the left\n");
+        turn(-M_PI / 2);
+      }
+    
+      passive_wait(0.5);
+    } 
+    else 
+    {    
       go_forward();
     }
+    
     wb_camera_get_image(camera);
     fflush_ir_receiver();
     step();
