@@ -177,7 +177,13 @@ class Robot
     CurrentTarget = new Location(_x, _y);
     NextTarget = new Location(_x, _y);
   }
-  
+ 
+  ~Robot()
+  {
+    delete CurrentTarget;
+    delete NextTarget;
+  }
+
   void Init()
   {
     wb_robot_init();
