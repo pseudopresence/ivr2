@@ -346,7 +346,7 @@ DEF CHAIR Solid {
   }
   physics Physics {
     density -1
-    mass 0.5
+    mass 50
     coulombFriction 0.007
   }
 }
@@ -437,7 +437,7 @@ DEF CHAIR Solid {
   }
   physics Physics {
     density -1
-    mass 0.5
+    mass 50
     coulombFriction 0.007
   }
 }
@@ -528,7 +528,7 @@ DEF CHAIR Solid {
   }
   physics Physics {
     density -1
-    mass 0.5
+    mass 50
     coulombFriction 0.007
   }
 }
@@ -619,7 +619,7 @@ DEF CHAIR Solid {
   }
   physics Physics {
     density -1
-    mass 0.5
+    mass 50
     coulombFriction 0.007
   }
 }
@@ -687,7 +687,7 @@ DEF TABLE Solid {
   }
   physics Physics {
     density -1
-    mass 1
+    mass 50
     bounce 0
     coulombFriction 0.01
   }
