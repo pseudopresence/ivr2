@@ -60,10 +60,10 @@ static WbDeviceTag receiver;
 static const char *receiver_name = "receiver";
 
 /* Misc Stuff */
-#define MAX_SPEED 100
-#define NULL_SPEED 0
-#define HALF_SPEED 50
-#define MIN_SPEED -100
+#define MAX_SPEED (500)
+#define NULL_SPEED (0)
+#define HALF_SPEED ((MAX_SPEED)/2.0)
+#define MIN_SPEED (-(MAX_SPEED))
 
 #define ROBOT_RADIUS 0.17
 #define ROBOT_DIAMETER 2 * ROBOT_RADIUS
@@ -78,6 +78,22 @@ static const char *receiver_name = "receiver";
 enum Direction { LEFT, RIGHT, UP, DOWN };
 
 /* helper functions */
+
+static double wrap(double _x, double const _min, double const _max)
+{
+   while (_x < _min)
+   {
+     _x += (_max - _min);
+   }
+
+   while (_x > _max)
+   {
+     _x -= (_max - _min);
+   }
+
+   return _x;
+}
+
 static int get_time_step() {
   static int time_step = -1;
   if (time_step == -1)
@@ -158,7 +174,7 @@ class Location
 
 class Robot
 {
- private:
+ public:
   double m_x;
   double m_y;
   double m_theta;
@@ -206,9 +222,10 @@ class Robot
     double distance = (dl + dr) / 2;
     
     m_theta += turn;
+    m_theta = wrap(m_theta, 0, 2*M_PI);
     m_x += distance * cos(m_theta);
     m_y += distance * sin(m_theta);
-    printf("X: %03.3lf, Y: %03.3lf, T: %03.3lf\n", m_x, m_y, m_theta);
+    // printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf [T: %03.3lf, %03.3lf]\n", m_x, m_y, m_theta, CurrentTarget->X, CurrentTarget->Y);
   }
   
   void Step() {
@@ -256,21 +273,43 @@ class Robot
     wb_differential_wheels_set_speed(neg*HALF_SPEED, -neg*HALF_SPEED);
     
     double const start = m_theta;
+    double const end = wrap(start + angle, 0, 2*M_PI);
     double cur = start;
     do 
     {
       Step();
       cur = m_theta;
     } 
-    while (fabs(cur - start) < fabs(angle));
+    while (fabs(wrap(end - cur, -M_PI, M_PI)) > 0.05);
+//    while (fabs(cur - start) < fabs(angle));
+
     
     Stop();
     
     Step();
   }
+
+  void TurnToHeading(double const _heading)
+  {
+    double delta = wrap(_heading - m_theta, -M_PI, M_PI);
+    printf("Turning to heading: %03.3lf\n", _heading);
+    if (fabs(delta) > 0.05) { Turn(delta); }
+  }
+
+  double GetTargetHeading()
+  {
+    return wrap(atan2(CurrentTarget->Y - m_y, CurrentTarget->X - m_x), 0, 2*M_PI);
+    // return M_PI;
+  }
   
   bool HasReachedTarget()
   {
+    double const dx = m_x - CurrentTarget->X;
+    double const dy = m_y - CurrentTarget->Y;
+    double const dd = (dx * dx) + (dy * dy);
+    printf("Distance^2 to target: %03.3f\n", dd);
+    return dd < 1.0;
+    
     bool result = false;
     
     switch (CurrentDirection)
@@ -289,7 +328,7 @@ class Robot
         break;
     }
     
-    //printf("Current location: %f %f\n", m_x, m_y);
+    // printf("Current location: %f %f\n", m_x, m_y);
     
     return result;
   }
@@ -314,14 +353,14 @@ public:
         robot->NextTarget->X = m_indent;
         robot->NextTarget->Y = MAX_ROOM_HEIGHT - m_indent;
         
-        //robot->CurrentDirection = UP;
+        robot->CurrentDirection = UP;
         break;
         
       case UP:
         robot->NextTarget->X = MAX_ROOM_WIDTH - m_indent;
         robot->NextTarget->Y = MAX_ROOM_HEIGHT - m_indent;
         
-        //robot->CurrentDirection = RIGHT;
+        robot->CurrentDirection = RIGHT;
         break;
         
       case RIGHT:
@@ -331,7 +370,7 @@ public:
         
         robot->NextTarget->Y = m_indent;
         
-        //robot->CurrentDirection = DOWN;
+        robot->CurrentDirection = DOWN;
         
         break;
         
@@ -340,13 +379,14 @@ public:
         robot->NextTarget->X = m_indent;
         robot->NextTarget->Y = m_indent;
         
-        //robot->CurrentDirection = LEFT;
+        robot->CurrentDirection = LEFT;
         break;
     }
     
     printf("Current target: %f %f\n", robot->CurrentTarget->X, robot->CurrentTarget->Y);
     printf("Next target: %f %f\n", robot->NextTarget->X, robot->NextTarget->Y);
         
+    robot->Stop();
     robot->PassiveWait(1.5);
   }
 };
@@ -354,7 +394,7 @@ public:
 /* main */
 int main(int argc, char **argv)
 {
-  Robot r(0,0,0);
+  Robot r(0,MAX_ROOM_HEIGHT,0);
   Navigation n;
  
   r.Init();
@@ -377,41 +417,26 @@ int main(int argc, char **argv)
   r.PassiveWait(0.5);
 
   while (true) {
-    if (is_there_a_virtual_wall()) 
-    {    
-      printf("Virtual wall detected\n");
-      r.Turn(M_PI);
-    } 
-    else if (is_there_a_collision_at_left()) 
+    if (is_there_a_collision_at_left()) 
     {    
       printf("Left collision detected\n");
       r.Backward();
-      r.PassiveWait(0.5);
-      r.Turn(M_PI * randdouble());
+      r.PassiveWait(0.2);
+      r.Turn(M_PI * 0.25);
+      r.Forward();
+      r.PassiveWait(0.2);
     } 
     else if (is_there_a_collision_at_right()) 
     {    
       printf("Right collision detected\n");
       r.Backward();
-      r.PassiveWait(0.5);
-      r.Turn(-M_PI * randdouble());
-    }
-    /*else if (is_there_a_distance_at_left()) 
-    {    
-      printf("Left distance detected\n");
-      go_backward();
-      passive_wait(0.5);
-      turn(M_PI * randdouble());
-    }
-    else if (is_there_a_distance_at_right()) 
-    {    
-      printf("Right distance detected\n");
-      go_backward();
-      passive_wait(0.5);
-      turn(-M_PI * randdouble());
-    } */
-    else if (is_there_a_distance_at_front()) 
-    {    
+      r.PassiveWait(0.2);
+      r.Turn(M_PI * 0.25);
+      r.Forward();
+      r.PassiveWait(0.2);
+   }
+   else if (is_there_a_distance_at_front()) 
+   {    
       printf("Front distance detected\n");
       //go_backward();
       
@@ -446,7 +471,8 @@ int main(int argc, char **argv)
         r.CurrentTarget->Y = r.NextTarget->Y;
         n.SetNextTarget(&r);
       }
-      
+        
+      r.TurnToHeading(r.GetTargetHeading());
       r.Forward();
     }
     
