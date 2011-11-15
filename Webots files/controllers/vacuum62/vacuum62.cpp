@@ -72,10 +72,10 @@ static const char *receiver_name = "receiver";
 #define ENCODER_RESOLUTION 507.9188
 
 /* Room Size */
-#define MAX_ROOM_HEIGHT 6 - ROBOT_DIAMETER
-#define MAX_ROOM_WIDTH 6 - ROBOT_DIAMETER
+#define MAX_ROOM_HEIGHT 6 - ROBOT_DIAMETER - 0.1
+#define MAX_ROOM_WIDTH 6 - ROBOT_DIAMETER - 0.1
 
-enum Direction { LEFT, RIGHT, UP, DOWN };
+enum Direction { LEFT, UP, RIGHT, DOWN };
 
 /* helper functions */
 
@@ -100,6 +100,7 @@ static int get_time_step() {
     time_step = (int) wb_robot_get_basic_time_step();
   return time_step;
 }
+
 
 static void init_devices() {
   int i;
@@ -131,6 +132,7 @@ static bool is_there_a_collision_at_right() {
   return (wb_touch_sensor_get_value(bumpers[BUMPER_RIGHT]) != 0.0);
 }
 
+
 static void fflush_ir_receiver() {
   while (wb_receiver_get_queue_length(receiver) > 0)
     wb_receiver_next_packet(receiver);
@@ -154,6 +156,7 @@ static bool is_there_a_distance_at_front() {
   return !((wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_LEFT]) > 0.0) &&
            (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_RIGHT]) > 0.0));
 }
+
 
 static double randdouble() {
   return rand() / ((double)RAND_MAX + 1);
@@ -187,19 +190,20 @@ class Robot
   Robot(double _x, double _y, double _theta):
     m_x(_x),
     m_y(_y),
+
     m_theta(_theta)
   {
-    CurrentDirection = LEFT;
+    CurrentDirection = RIGHT;
     CurrentTarget = new Location(_x, _y);
     NextTarget = new Location(_x, _y);
   }
- 
+
   ~Robot()
   {
     delete CurrentTarget;
     delete NextTarget;
   }
-
+  
   void Init()
   {
     wb_robot_init();
@@ -313,22 +317,23 @@ class Robot
     bool result = false;
     
     switch (CurrentDirection)
-    {
-      case LEFT:
-        result = m_x <= CurrentTarget->X;
+    {    
+      case RIGHT:
+        result = fabs(m_y) <= CurrentTarget->Y;
         break;
       case UP:
-        result = m_y >= CurrentTarget->Y;
+        result = fabs(m_x) >= CurrentTarget->X;
         break;
-      case RIGHT:
-        result = m_x >= CurrentTarget->X;
+      case LEFT:
+        result = fabs(m_y) >= CurrentTarget->Y;
         break;
       case DOWN:
-        result = m_y <= CurrentTarget->Y;
-        break;
+        result = fabs(m_x) <= CurrentTarget->X;
+        break;      
     }
     
-    // printf("Current location: %f %f\n", m_x, m_y);
+    //printf("Current location: %f %f\n", m_x, m_y);
+    //printf("Is: %s %f %f\n", (m_y >= CurrentTarget->Y) ? "true" : "false", m_y, CurrentTarget->Y);
     
     return result;
   }
@@ -349,9 +354,9 @@ public:
   {
     switch (robot->CurrentDirection)
     {
-      case LEFT:
-        robot->NextTarget->X = m_indent;
-        robot->NextTarget->Y = MAX_ROOM_HEIGHT - m_indent;
+      case RIGHT:
+        robot->NextTarget->X = MAX_ROOM_WIDTH - m_indent;
+        robot->NextTarget->Y = m_indent;
         
         robot->CurrentDirection = UP;
         break;
@@ -363,21 +368,20 @@ public:
         robot->CurrentDirection = RIGHT;
         break;
         
-      case RIGHT:
-        robot->NextTarget->X = MAX_ROOM_WIDTH - m_indent;
-        
-        m_indent += ROBOT_DIAMETER;
-        
-        robot->NextTarget->Y = m_indent;
+      case LEFT:
+        robot->NextTarget->Y = MAX_ROOM_HEIGHT - m_indent;
+        robot->NextTarget->X = m_indent;
         
         robot->CurrentDirection = DOWN;
         
         break;
         
       case DOWN:
+        robot->NextTarget->Y = m_indent;
+        
+        m_indent += ROBOT_DIAMETER;
         
         robot->NextTarget->X = m_indent;
-        robot->NextTarget->Y = m_indent;
         
         robot->CurrentDirection = LEFT;
         break;
@@ -385,9 +389,6 @@ public:
     
     printf("Current target: %f %f\n", robot->CurrentTarget->X, robot->CurrentTarget->Y);
     printf("Next target: %f %f\n", robot->NextTarget->X, robot->NextTarget->Y);
-        
-    robot->Stop();
-    robot->PassiveWait(1.5);
   }
 };
 
@@ -398,10 +399,15 @@ int main(int argc, char **argv)
   Navigation n;
  
   r.Init();
+  
+  //Robots initial movement is upwards towards the first target position
   n.SetNextTarget(&r);
+  r.CurrentDirection = UP;
   r.CurrentTarget->X = r.NextTarget->X;
   r.CurrentTarget->Y = r.NextTarget->Y;
-  //n.SetNextTarget(&r);
+  
+  //Look ahead for 1 target
+  n.SetNextTarget(&r);
  
   printf("Controller of the iRobot Create robot started...\n");
   
@@ -438,39 +444,32 @@ int main(int argc, char **argv)
       r.PassiveWait(0.2);
       r.TurnToHeading(r.GetTargetHeading());
    }
-   /*
-   else if (is_there_a_distance_at_front()) 
+   else 
    {    
-      printf("Front distance detected\n");
-      //go_backward();
-      
-      if (is_there_a_distance_at_left())
-      {
-        if (is_there_a_distance_at_right())
-        {
-          printf("Going backwards\n");
-          r.Backward();
-          r.PassiveWait(0.5);
-          r.Turn(-M_PI / 2);
-        }
-        else
-        {
-          printf("Turning to the right\n");
-          r.Turn(M_PI / 2);
-        }
-      }
-      else
-      {
-        printf("Turning to the left\n");
-        r.Turn(-M_PI / 2);
-      }
-    
-      r.PassiveWait(0.5);
-    } */
-    else 
-    {    
       if (r.HasReachedTarget())
-      {
+      {        
+        //If the robot has reached its current target, turn in the correct direction and switch to next target
+        printf("Turning\n");
+        
+        r.Turn(-M_PI / 2);
+        r.PassiveWait(0.5);
+        
+        switch (r.CurrentDirection)
+        {
+          case RIGHT:
+            r.CurrentDirection = UP;
+            break;
+          case UP:
+            r.CurrentDirection = LEFT;
+            break;
+          case LEFT:
+            r.CurrentDirection = DOWN;
+            break;
+          case DOWN:
+            r.CurrentDirection = RIGHT;
+            break;
+        }
+        
         r.CurrentTarget->X = r.NextTarget->X;
         r.CurrentTarget->Y = r.NextTarget->Y;
         n.SetNextTarget(&r);
@@ -478,15 +477,13 @@ int main(int argc, char **argv)
       }
       
       r.Forward();
-    }
-    
+    } 
     // wb_camera_get_image(camera);
     fflush_ir_receiver();
     r.Step();
-  };
+  }
   
   r.Shutdown();
   
   return EXIT_SUCCESS;
 }
-
