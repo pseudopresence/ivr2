@@ -65,9 +65,17 @@ static const char *receiver_name = "receiver";
 #define HALF_SPEED 50
 #define MIN_SPEED -100
 
+#define ROBOT_RADIUS 0.17
+#define ROBOT_DIAMETER 2 * ROBOT_RADIUS
 #define WHEEL_RADIUS 0.031
 #define AXLE_LENGTH 0.271756
 #define ENCODER_RESOLUTION 507.9188
+
+/* Room Size */
+#define MAX_ROOM_HEIGHT 6 - ROBOT_DIAMETER
+#define MAX_ROOM_WIDTH 6 - ROBOT_DIAMETER
+
+enum Direction { LEFT, RIGHT, UP, DOWN };
 
 /* helper functions */
 static int get_time_step() {
@@ -135,18 +143,39 @@ static double randdouble() {
   return rand() / ((double)RAND_MAX + 1);
 }
 
+class Location
+{    
+  public:
+    double X;
+    double Y;
+    
+    Location(double _x, double _y)
+    {
+      X = _x;
+      Y = _y;
+    }
+};
+
 class Robot
 {
-public: 
+ private:
   double m_x;
   double m_y;
   double m_theta;
- 
+  
+ public:
+  Direction CurrentDirection;
+  Location* CurrentTarget;
+  Location* NextTarget;
+  
   Robot(double _x, double _y, double _theta):
     m_x(_x),
     m_y(_y),
     m_theta(_theta)
   {
+    CurrentDirection = LEFT;
+    CurrentTarget = new Location(_x, _y);
+    NextTarget = new Location(_x, _y);
   }
   
   void Init()
@@ -184,7 +213,8 @@ public:
     UpdateOdometry();
   }
   
-  void PassiveWait(double sec) {
+  void PassiveWait(double sec) 
+  {
     double start_time = wb_robot_get_time();
     
     do 
@@ -194,15 +224,18 @@ public:
     while((start_time + sec) > wb_robot_get_time());
   }
   
-  void Forward() {
+  void Forward() 
+  {
     wb_differential_wheels_set_speed(MAX_SPEED, MAX_SPEED);
   }
 
-  void Backward() {
+  void Backward() 
+  {
     wb_differential_wheels_set_speed(-HALF_SPEED, -HALF_SPEED);
   }
 
-  void Stop() {
+  void Stop() 
+  {
     wb_differential_wheels_set_speed(-NULL_SPEED, -NULL_SPEED);
   }
   
@@ -228,16 +261,102 @@ public:
     
     Step();
   }
+  
+  bool HasReachedTarget()
+  {
+    bool result = false;
+    
+    switch (CurrentDirection)
+    {
+      case LEFT:
+        result = m_x <= CurrentTarget->X;
+        break;
+      case UP:
+        result = m_y >= CurrentTarget->Y;
+        break;
+      case RIGHT:
+        result = m_x >= CurrentTarget->X;
+        break;
+      case DOWN:
+        result = m_y <= CurrentTarget->Y;
+        break;
+    }
+    
+    //printf("Current location: %f %f\n", m_x, m_y);
+    
+    return result;
+  }
+};
+
+class Navigation
+{
+private:
+  double m_indent;
+  
+public:
+  Navigation()
+  {
+    m_indent = 0;
+  }
+  
+  void SetNextTarget(Robot* robot)
+  {
+    switch (robot->CurrentDirection)
+    {
+      case LEFT:
+        robot->NextTarget->X = m_indent;
+        robot->NextTarget->Y = MAX_ROOM_HEIGHT - m_indent;
+        
+        //robot->CurrentDirection = UP;
+        break;
+        
+      case UP:
+        robot->NextTarget->X = MAX_ROOM_WIDTH - m_indent;
+        robot->NextTarget->Y = MAX_ROOM_HEIGHT - m_indent;
+        
+        //robot->CurrentDirection = RIGHT;
+        break;
+        
+      case RIGHT:
+        robot->NextTarget->X = MAX_ROOM_WIDTH - m_indent;
+        
+        m_indent += ROBOT_DIAMETER;
+        
+        robot->NextTarget->Y = m_indent;
+        
+        //robot->CurrentDirection = DOWN;
+        
+        break;
+        
+      case DOWN:
+        
+        robot->NextTarget->X = m_indent;
+        robot->NextTarget->Y = m_indent;
+        
+        //robot->CurrentDirection = LEFT;
+        break;
+    }
+    
+    printf("Current target: %f %f\n", robot->CurrentTarget->X, robot->CurrentTarget->Y);
+    printf("Next target: %f %f\n", robot->NextTarget->X, robot->NextTarget->Y);
+        
+    robot->PassiveWait(1.5);
+  }
 };
 
 /* main */
 int main(int argc, char **argv)
 {
   Robot r(0,0,0);
+  Navigation n;
  
   r.Init();
+  n.SetNextTarget(&r);
+  r.CurrentTarget->X = r.NextTarget->X;
+  r.CurrentTarget->Y = r.NextTarget->Y;
+  //n.SetNextTarget(&r);
  
-  printf("Default controller of the iRobot Create robot started...\n");
+  printf("Controller of the iRobot Create robot started...\n");
   
   init_devices();
   
@@ -285,8 +404,7 @@ int main(int argc, char **argv)
       turn(-M_PI * randdouble());
     } */
     else if (is_there_a_distance_at_front()) 
-    {
-    
+    {    
       printf("Front distance detected\n");
       //go_backward();
       
@@ -315,6 +433,13 @@ int main(int argc, char **argv)
     } 
     else 
     {    
+      if (r.HasReachedTarget())
+      {
+        r.CurrentTarget->X = r.NextTarget->X;
+        r.CurrentTarget->Y = r.NextTarget->Y;
+        n.SetNextTarget(&r);
+      }
+      
       r.Forward();
     }
     
