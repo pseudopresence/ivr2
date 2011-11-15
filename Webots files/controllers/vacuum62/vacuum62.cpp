@@ -285,11 +285,8 @@ class Robot
       cur = m_theta;
     } 
     while (fabs(wrap(end - cur, -M_PI, M_PI)) > 0.03);
-//    while (fabs(cur - start) < fabs(angle));
-
     
     Stop();
-    
     Step();
   }
 
@@ -303,7 +300,6 @@ class Robot
   double GetTargetHeading()
   {
     return wrap(-atan2(CurrentTarget->Y - m_y, CurrentTarget->X - m_x), 0, 2*M_PI);
-    // return M_PI;
   }
   
   bool HasReachedTarget()
@@ -358,32 +354,27 @@ public:
         robot->NextTarget->X = MAX_ROOM_WIDTH - m_indent;
         robot->NextTarget->Y = m_indent;
         
-        robot->CurrentDirection = UP;
         break;
         
       case UP:
         robot->NextTarget->X = MAX_ROOM_WIDTH - m_indent;
         robot->NextTarget->Y = MAX_ROOM_HEIGHT - m_indent;
         
-        robot->CurrentDirection = RIGHT;
         break;
         
       case LEFT:
         robot->NextTarget->Y = MAX_ROOM_HEIGHT - m_indent;
         robot->NextTarget->X = m_indent;
         
-        robot->CurrentDirection = DOWN;
-        
         break;
         
       case DOWN:
-        robot->NextTarget->Y = m_indent;
+        robot->NextTarget->X = m_indent;
         
         m_indent += ROBOT_DIAMETER;
         
-        robot->NextTarget->X = m_indent;
+        robot->NextTarget->Y = m_indent;
         
-        robot->CurrentDirection = LEFT;
         break;
     }
     
@@ -412,9 +403,6 @@ int main(int argc, char **argv)
   printf("Controller of the iRobot Create robot started...\n");
   
   init_devices();
-  
-  // camera = wb_robot_get_device("camera");
-  // wb_camera_enable(camera,get_time_step());
   
   srand(time(NULL));
   
@@ -478,7 +466,6 @@ int main(int argc, char **argv)
       
       r.Forward();
     } 
-    // wb_camera_get_image(camera);
     fflush_ir_receiver();
     r.Step();
   }
