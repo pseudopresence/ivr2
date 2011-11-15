@@ -60,10 +60,10 @@ static WbDeviceTag receiver;
 static const char *receiver_name = "receiver";
 
 /* Misc Stuff */
-#define MAX_SPEED 100
+#define MAX_SPEED 200
 #define NULL_SPEED 0
-#define HALF_SPEED 50
-#define MIN_SPEED -100
+#define HALF_SPEED 100
+#define MIN_SPEED -200
 
 #define ROBOT_RADIUS 0.17
 #define ROBOT_DIAMETER 2 * ROBOT_RADIUS
@@ -72,10 +72,10 @@ static const char *receiver_name = "receiver";
 #define ENCODER_RESOLUTION 507.9188
 
 /* Room Size */
-#define MAX_ROOM_HEIGHT 6 - ROBOT_DIAMETER
-#define MAX_ROOM_WIDTH 6 - ROBOT_DIAMETER
+#define MAX_ROOM_HEIGHT 6 - ROBOT_DIAMETER - 0.1
+#define MAX_ROOM_WIDTH 6 - ROBOT_DIAMETER - 0.1
 
-enum Direction { LEFT, RIGHT, UP, DOWN };
+enum Direction { LEFT, UP, RIGHT, DOWN };
 
 /* helper functions */
 static int get_time_step() {
@@ -173,17 +173,11 @@ class Robot
     m_y(_y),
     m_theta(_theta)
   {
-    CurrentDirection = LEFT;
+    CurrentDirection = RIGHT;
     CurrentTarget = new Location(_x, _y);
     NextTarget = new Location(_x, _y);
   }
- 
-  ~Robot()
-  {
-    delete CurrentTarget;
-    delete NextTarget;
-  }
-
+  
   void Init()
   {
     wb_robot_init();
@@ -202,13 +196,12 @@ class Robot
     double dl = encl / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by left wheel in meter
     double dr = encr / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by right wheel in meter
     
-    double turn = (dl - dr) / AXLE_LENGTH; // delta orientation in radian
+    double orientation = (dl - dr) / AXLE_LENGTH; // delta orientation in radian
     double distance = (dl + dr) / 2;
     
-    m_theta += turn;
+    m_theta += orientation;
     m_x += distance * cos(m_theta);
     m_y += distance * sin(m_theta);
-    printf("X: %03.3lf, Y: %03.3lf, T: %03.3lf\n", m_x, m_y, m_theta);
   }
   
   void Step() {
@@ -274,22 +267,23 @@ class Robot
     bool result = false;
     
     switch (CurrentDirection)
-    {
-      case LEFT:
-        result = m_x <= CurrentTarget->X;
+    {    
+      case RIGHT:
+        result = fabs(m_y) <= CurrentTarget->Y;
         break;
       case UP:
-        result = m_y >= CurrentTarget->Y;
+        result = fabs(m_x) >= CurrentTarget->X;
         break;
-      case RIGHT:
-        result = m_x >= CurrentTarget->X;
+      case LEFT:
+        result = fabs(m_y) >= CurrentTarget->Y;
         break;
       case DOWN:
-        result = m_y <= CurrentTarget->Y;
-        break;
+        result = fabs(m_x) <= CurrentTarget->X;
+        break;      
     }
     
     //printf("Current location: %f %f\n", m_x, m_y);
+    //printf("Is: %s %f %f\n", (m_y >= CurrentTarget->Y) ? "true" : "false", m_y, CurrentTarget->Y);
     
     return result;
   }
@@ -310,9 +304,9 @@ public:
   {
     switch (robot->CurrentDirection)
     {
-      case LEFT:
-        robot->NextTarget->X = m_indent;
-        robot->NextTarget->Y = MAX_ROOM_HEIGHT - m_indent;
+      case RIGHT:
+        robot->NextTarget->X = MAX_ROOM_WIDTH - m_indent;
+        robot->NextTarget->Y = m_indent;
         
         //robot->CurrentDirection = UP;
         break;
@@ -324,21 +318,20 @@ public:
         //robot->CurrentDirection = RIGHT;
         break;
         
-      case RIGHT:
-        robot->NextTarget->X = MAX_ROOM_WIDTH - m_indent;
-        
-        m_indent += ROBOT_DIAMETER;
-        
-        robot->NextTarget->Y = m_indent;
+      case LEFT:
+        robot->NextTarget->Y = MAX_ROOM_HEIGHT - m_indent;
+        robot->NextTarget->X = m_indent;
         
         //robot->CurrentDirection = DOWN;
         
         break;
         
       case DOWN:
+        robot->NextTarget->Y = m_indent;
+        
+        m_indent += ROBOT_DIAMETER;
         
         robot->NextTarget->X = m_indent;
-        robot->NextTarget->Y = m_indent;
         
         //robot->CurrentDirection = LEFT;
         break;
@@ -347,7 +340,7 @@ public:
     printf("Current target: %f %f\n", robot->CurrentTarget->X, robot->CurrentTarget->Y);
     printf("Next target: %f %f\n", robot->NextTarget->X, robot->NextTarget->Y);
         
-    robot->PassiveWait(1.5);
+    //robot->PassiveWait(1.5);
   }
 };
 
@@ -358,10 +351,15 @@ int main(int argc, char **argv)
   Navigation n;
  
   r.Init();
+  
+  //Robots initial movement is upwards towards the first target position
   n.SetNextTarget(&r);
+  r.CurrentDirection = UP;
   r.CurrentTarget->X = r.NextTarget->X;
   r.CurrentTarget->Y = r.NextTarget->Y;
-  //n.SetNextTarget(&r);
+  
+  //Look ahead for 1 target
+  n.SetNextTarget(&r);
  
   printf("Controller of the iRobot Create robot started...\n");
   
@@ -377,6 +375,7 @@ int main(int argc, char **argv)
   r.PassiveWait(0.5);
 
   while (true) {
+    /*
     if (is_there_a_virtual_wall()) 
     {    
       printf("Virtual wall detected\n");
@@ -396,7 +395,7 @@ int main(int argc, char **argv)
       r.PassiveWait(0.5);
       r.Turn(-M_PI * randdouble());
     }
-    /*else if (is_there_a_distance_at_left()) 
+    else if (is_there_a_distance_at_left()) 
     {    
       printf("Left distance detected\n");
       go_backward();
@@ -409,7 +408,7 @@ int main(int argc, char **argv)
       go_backward();
       passive_wait(0.5);
       turn(-M_PI * randdouble());
-    } */
+    } 
     else if (is_there_a_distance_at_front()) 
     {    
       printf("Front distance detected\n");
@@ -439,16 +438,38 @@ int main(int argc, char **argv)
       r.PassiveWait(0.5);
     } 
     else 
-    {    
+    {*/    
       if (r.HasReachedTarget())
-      {
+      {        
+        //If the robot has reached its current target, turn in the correct direction and switch to next target
+        printf("Turning\n");
+        
+        r.Turn(-M_PI / 2);
+        r.PassiveWait(0.5);
+        
+        switch (r.CurrentDirection)
+        {
+          case RIGHT:
+            r.CurrentDirection = UP;
+            break;
+          case UP:
+            r.CurrentDirection = LEFT;
+            break;
+          case LEFT:
+            r.CurrentDirection = DOWN;
+            break;
+          case DOWN:
+            r.CurrentDirection = RIGHT;
+            break;
+        }
+        
         r.CurrentTarget->X = r.NextTarget->X;
         r.CurrentTarget->Y = r.NextTarget->Y;
         n.SetNextTarget(&r);
       }
       
       r.Forward();
-    }
+    /*}*/
     
     // wb_camera_get_image(camera);
     fflush_ir_receiver();
