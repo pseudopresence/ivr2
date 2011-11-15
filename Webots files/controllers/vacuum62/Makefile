@@ -44,3 +44,4 @@ space :=
 space +=
 WEBOTS_HOME_PATH=$(subst $(space),\ ,$(strip $(subst \,/,$(WEBOTS_HOME))))
 include $(WEBOTS_HOME_PATH)/resources/controllers/Makefile.include
+###include $(WEBOTS_HOME_PATH)/resources/projects/default/controllers/Makefile.include
