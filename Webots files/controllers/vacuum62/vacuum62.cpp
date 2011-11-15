@@ -318,13 +318,13 @@ class Robot
         result = fabs(m_y) <= CurrentTarget->Y;
         break;
       case UP:
-        result = fabs(m_x) >= CurrentTarget->X;
+        result = m_x >= CurrentTarget->X;
         break;
       case LEFT:
         result = fabs(m_y) >= CurrentTarget->Y;
         break;
       case DOWN:
-        result = fabs(m_x) <= CurrentTarget->X;
+        result = m_x <= CurrentTarget->X;
         break;      
     }
     
