@@ -202,12 +202,13 @@ class Robot
     double dl = encl / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by left wheel in meter
     double dr = encr / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by right wheel in meter
     
-    double orientation = (dl - dr) / AXLE_LENGTH; // delta orientation in radian
+    double turn = (dl - dr) / AXLE_LENGTH; // delta orientation in radian
     double distance = (dl + dr) / 2;
     
-    m_theta += orientation;
+    m_theta += turn;
     m_x += distance * cos(m_theta);
     m_y += distance * sin(m_theta);
+    printf("X: %03.3lf, Y: %03.3lf, T: %03.3lf\n", m_x, m_y, m_theta);
   }
   
   void Step() {
