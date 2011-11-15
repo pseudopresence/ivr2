@@ -224,8 +224,8 @@ class Robot
     m_theta += turn;
     m_theta = wrap(m_theta, 0, 2*M_PI);
     m_x += distance * cos(m_theta);
-    m_y += distance * sin(m_theta);
-    // printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf [T: %03.3lf, %03.3lf]\n", m_x, m_y, m_theta, CurrentTarget->X, CurrentTarget->Y);
+    m_y += distance * -sin(m_theta);
+    //printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf [T: %03.3lf, %03.3lf]\n", m_x, m_y, m_theta, CurrentTarget->X, CurrentTarget->Y);
   }
   
   void Step() {
@@ -280,7 +280,7 @@ class Robot
       Step();
       cur = m_theta;
     } 
-    while (fabs(wrap(end - cur, -M_PI, M_PI)) > 0.05);
+    while (fabs(wrap(end - cur, -M_PI, M_PI)) > 0.03);
 //    while (fabs(cur - start) < fabs(angle));
 
     
@@ -292,13 +292,13 @@ class Robot
   void TurnToHeading(double const _heading)
   {
     double delta = wrap(_heading - m_theta, -M_PI, M_PI);
-    printf("Turning to heading: %03.3lf\n", _heading);
-    if (fabs(delta) > 0.05) { Turn(delta); }
+    // printf("Turning to heading: %03.3lf\n", _heading);
+    if (fabs(delta) > 0.03) { Turn(delta); }
   }
 
   double GetTargetHeading()
   {
-    return wrap(atan2(CurrentTarget->Y - m_y, CurrentTarget->X - m_x), 0, 2*M_PI);
+    return wrap(-atan2(CurrentTarget->Y - m_y, CurrentTarget->X - m_x), 0, 2*M_PI);
     // return M_PI;
   }
   
@@ -307,8 +307,8 @@ class Robot
     double const dx = m_x - CurrentTarget->X;
     double const dy = m_y - CurrentTarget->Y;
     double const dd = (dx * dx) + (dy * dy);
-    printf("Distance^2 to target: %03.3f\n", dd);
-    return dd < 1.0;
+    // printf("Distance^2 to target: %03.3f\n", dd);
+    return dd < 0.3;
     
     bool result = false;
     
@@ -394,7 +394,7 @@ public:
 /* main */
 int main(int argc, char **argv)
 {
-  Robot r(0,MAX_ROOM_HEIGHT,0);
+  Robot r(0,0,0);
   Navigation n;
  
   r.Init();
@@ -415,6 +415,7 @@ int main(int argc, char **argv)
   wb_led_set(leds[LED_ON], true);
   
   r.PassiveWait(0.5);
+  r.TurnToHeading(r.GetTargetHeading());
 
   while (true) {
     if (is_there_a_collision_at_left()) 
@@ -425,6 +426,7 @@ int main(int argc, char **argv)
       r.Turn(M_PI * 0.25);
       r.Forward();
       r.PassiveWait(0.2);
+      r.TurnToHeading(r.GetTargetHeading());
     } 
     else if (is_there_a_collision_at_right()) 
     {    
@@ -434,7 +436,9 @@ int main(int argc, char **argv)
       r.Turn(M_PI * 0.25);
       r.Forward();
       r.PassiveWait(0.2);
+      r.TurnToHeading(r.GetTargetHeading());
    }
+   /*
    else if (is_there_a_distance_at_front()) 
    {    
       printf("Front distance detected\n");
@@ -462,7 +466,7 @@ int main(int argc, char **argv)
       }
     
       r.PassiveWait(0.5);
-    } 
+    } */
     else 
     {    
       if (r.HasReachedTarget())
@@ -470,9 +474,9 @@ int main(int argc, char **argv)
         r.CurrentTarget->X = r.NextTarget->X;
         r.CurrentTarget->Y = r.NextTarget->Y;
         n.SetNextTarget(&r);
+        r.TurnToHeading(r.GetTargetHeading());
       }
-        
-      r.TurnToHeading(r.GetTargetHeading());
+      
       r.Forward();
     }
     
