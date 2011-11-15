@@ -60,10 +60,10 @@ static WbDeviceTag receiver;
 static const char *receiver_name = "receiver";
 
 /* Misc Stuff */
-#define MAX_SPEED 200
+#define MAX_SPEED 100
 #define NULL_SPEED 0
-#define HALF_SPEED 100
-#define MIN_SPEED -200
+#define HALF_SPEED 50
+#define MIN_SPEED -100
 
 #define ROBOT_RADIUS 0.17
 #define ROBOT_DIAMETER 2 * ROBOT_RADIUS
@@ -272,13 +272,13 @@ class Robot
         result = fabs(m_y) <= CurrentTarget->Y;
         break;
       case UP:
-        result = fabs(m_x) >= CurrentTarget->X;
+        result = m_x >= CurrentTarget->X;
         break;
       case LEFT:
         result = fabs(m_y) >= CurrentTarget->Y;
         break;
       case DOWN:
-        result = fabs(m_x) <= CurrentTarget->X;
+        result = m_x <= CurrentTarget->X;
         break;      
     }
     
@@ -327,11 +327,11 @@ public:
         break;
         
       case DOWN:
-        robot->NextTarget->Y = m_indent;
+        robot->NextTarget->X = m_indent;
         
         m_indent += ROBOT_DIAMETER;
         
-        robot->NextTarget->X = m_indent;
+        robot->NextTarget->Y = m_indent;
         
         //robot->CurrentDirection = LEFT;
         break;
