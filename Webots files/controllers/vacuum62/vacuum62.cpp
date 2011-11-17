@@ -251,10 +251,24 @@ class Robot
     } 
     while((start_time + sec) > wb_robot_get_time());
   }
-  
+ 
+  void Forward(double _dist) /* distance in meters */
+  {
+    Forward();
+    PassiveWait(1000 * _dist / MAX_SPEED);
+    Stop();
+  }
+
   void Forward() 
   {
     wb_differential_wheels_set_speed(MAX_SPEED, MAX_SPEED);
+  }
+
+  void Backward(double _dist) /* distance in meters */
+  {
+    Backward();
+    PassiveWait(1000 * _dist / MAX_SPEED);
+    Stop();
   }
 
   void Backward() 
@@ -415,21 +429,17 @@ int main(int argc, char **argv)
     if (is_there_a_collision_at_left()) 
     {    
       printf("Left collision detected\n");
-      r.Backward();
-      r.PassiveWait(0.2);
+      r.Backward(0.1);
       r.Turn(M_PI * -0.25);
-      r.Forward();
-      r.PassiveWait(0.2);
+      r.Forward(0.1);
       r.TurnToHeading(r.GetTargetHeading());
     } 
     else if (is_there_a_collision_at_right()) 
     {    
       printf("Right collision detected\n");
-      r.Backward();
-      r.PassiveWait(0.2);
+      r.Backward(0.1);
       r.Turn(M_PI * -0.25);
-      r.Forward();
-      r.PassiveWait(0.2);
+      r.Forward(0.1);
       r.TurnToHeading(r.GetTargetHeading());
    }
    else 
