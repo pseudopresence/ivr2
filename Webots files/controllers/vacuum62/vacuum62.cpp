@@ -122,6 +122,11 @@ static float smootherstep(float edge0, float edge1, float x)
   return x*x*x*(x*(x*6 - 15) + 10);
 }
 
+static double forceFromDist(double _dist)
+{
+  return 1 - smootherstep(0.1, 0.2, _dist);
+}
+
 class Vec2
 {
 public:
@@ -132,11 +137,21 @@ public:
   Vec2(double const _x, double const _y) : m_x(_x), m_y(_y) {}
   Vec2(Vec2 const& _v) : m_x(_v.m_x), m_y(_v.m_y) {}
 
-  operator=(Vec2 const& _v) { m_x = _v.m_x; m_y = _v.m_y; }
+  Vec2 const& operator=(Vec2 const& _v) { m_x = _v.m_x; m_y = _v.m_y; return *this; }
 
   double GetDir() const { return atan2(m_y, m_x); }
-
   static Vec2 FromDir(double const _dir) { return Vec2(cos(_dir), sin(_dir)); }
+  
+  static Vec2 XAxis() { return Vec2(1, 0); }
+  static Vec2 YAxis() { return Vec2(0, 1); }
+
+  Vec2 RotatedBy(double const _theta) const
+  {
+    return Vec2(
+        m_x * cos(_theta) - m_y * sin(_theta),
+        m_x * sin(_theta) + m_y * cos(_theta)
+    );
+  }
 };
 
 inline Vec2 operator+(Vec2 const& _l, Vec2 const& _r)
@@ -458,6 +473,8 @@ public:
   }
 };
 
+
+
 /* main */
 int main(int argc, char **argv)
 {
@@ -484,6 +501,8 @@ int main(int argc, char **argv)
   srand(time(NULL));
   
   wb_led_set(leds[LED_ON], true);
+
+  Vec2 prevForce;
   
   r.PassiveWait(0.5);
   // r.TurnToHeading(r.GetTargetHeading());
@@ -512,28 +531,28 @@ int main(int argc, char **argv)
       double const d_frontright = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]);
       double const d_right = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]);
 
-      double const d_min = 0.1;
-      double const d_max = 0.3;
-
-      double const goalForce = 1.0;
-      double const avoidForce = 1.0;
+      double const goalWeight = 1.0;
+      double const avoidWeight = 10.0;
     
       // Avoidance force in local coordinates
-      double const avoidForce_lr = 0; // smootherstep(d_right, d_max, d_min) - smootherstep(d_left, d_max, d_min);
-      double const avoidForce_fb = 0; // 0.5 * smootherstep(d_frontleft, d_max, d_min) + 0.5 * smootherstep(d_frontright, d_max, d_min);
+      double const avoidForce_lr = forceFromDist(d_left) - forceFromDist(d_right);
+      double const avoidForce_fb = 0.5 * forceFromDist(d_frontleft) + 0.5 * forceFromDist(d_frontright);
+      Vec2 const avoidForce = Vec2(avoidForce_lr, avoidForce_fb);
 
       // Goal force in local coordinates
       double const goalHeading = r.GetTargetHeading() - r.m_theta;
-      double const goalForce_lr = cos(goalHeading);
-      double const goalForce_fb = sin(goalHeading);
+      Vec2 const goalForce = Vec2::FromDir(goalHeading);
       
       // Total force in local coordinates
-      double const totalForce_lr = goalForce * goalForce_lr - avoidForce * avoidForce_lr;
-      double const totalForce_fb = goalForce * goalForce_fb - avoidForce * avoidForce_fb;
-     
+      Vec2 const totalForceLocal = goalWeight * goalForce - avoidWeight * avoidForce;
+      Vec2 const totalForce = totalForceLocal.RotatedBy(r.m_theta);
+
+      Vec2 const curForce = 0.5 * totalForce + 0.5 * prevForce;
+      prevForce = curForce;
+
       // Total force direction in local coordinates
-      double const forceHeading = atan2(totalForce_fb, totalForce_lr);
-      r.TurnToHeading(r.m_theta + forceHeading);
+      double const forceHeading = curForce.GetDir(); 
+      r.TurnToHeading(forceHeading);
       r.Forward();
 
       if (r.HasReachedTarget())
