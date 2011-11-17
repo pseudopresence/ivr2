@@ -60,7 +60,7 @@ static WbDeviceTag receiver;
 static const char *receiver_name = "receiver";
 
 /* Misc Stuff */
-#define MAX_SPEED (100) /* Units: mm/s */
+#define MAX_SPEED (500) /* Units: mm/s */
 #define NULL_SPEED (0)
 #define HALF_SPEED ((MAX_SPEED)/2.0)
 #define MIN_SPEED (-(MAX_SPEED))
@@ -79,6 +79,12 @@ enum Direction { LEFT, UP, RIGHT, DOWN };
 
 /* helper functions */
 
+/* random double [0.0 - 1.0] */
+static double randdouble() {
+  return rand() / ((double)RAND_MAX + 1);
+}
+
+/* wrap a value into the given range, for example -M_PI to M_PI */
 static double wrap(double _x, double const _min, double const _max)
 {
    while (_x < _min)
@@ -92,6 +98,65 @@ static double wrap(double _x, double const _min, double const _max)
    }
 
    return _x;
+}
+
+/* clamp a value to the given range, for example 0 to 1 */
+static double clamp(double _x, double const _min, double const _max)
+{
+  if ( _x < _min )
+  {
+    return _min;
+  } else if ( _max < _x ) {
+    return _max;
+  } else {
+    return _x;
+  }
+}
+
+/* smootherstep interpolation function from http://en.wikipedia.org/wiki/Smoothstep */
+static float smootherstep(float edge0, float edge1, float x)
+{
+  // Scale, and clamp x to 0..1 range
+  x = clamp((x - edge0)/(edge1 - edge0), 0, 1);
+  // Evaluate polynomial
+  return x*x*x*(x*(x*6 - 15) + 10);
+}
+
+class Vec2
+{
+public:
+  double m_x;
+  double m_y;
+
+  Vec2() : m_x(0), m_y(0) {}
+  Vec2(double const _x, double const _y) : m_x(_x), m_y(_y) {}
+  Vec2(Vec2 const& _v) : m_x(_v.m_x), m_y(_v.m_y) {}
+
+  operator=(Vec2 const& _v) { m_x = _v.m_x; m_y = _v.m_y; }
+
+  double GetDir() const { return atan2(m_y, m_x); }
+
+  static Vec2 FromDir(double const _dir) { return Vec2(cos(_dir), sin(_dir)); }
+};
+
+inline Vec2 operator+(Vec2 const& _l, Vec2 const& _r)
+{
+  return Vec2(_l.m_x + _r.m_x, _l.m_y + _r.m_y);
+}
+
+inline Vec2 operator-(Vec2 const& _l, Vec2 const& _r)
+{
+  return Vec2(_l.m_x - _r.m_x, _l.m_y - _r.m_y);
+}
+
+inline Vec2 operator*(double const _s, Vec2 const& _v)
+{
+  return Vec2(_v.m_x * _s, _v.m_y * _s);
+}
+
+inline Vec2 operator*(Vec2 const& _v, double const _s)
+{
+  return _s * _v;
 }
 
 static int get_time_step() {
@@ -157,10 +222,6 @@ static bool is_there_a_distance_at_front() {
            (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_RIGHT]) > 0.0));
 }
 
-
-static double randdouble() {
-  return rand() / ((double)RAND_MAX + 1);
-}
 
 class Location
 {    
@@ -308,7 +369,7 @@ class Robot
   {
     double delta = wrap(_heading - m_theta, -M_PI, M_PI);
     // printf("Turning to heading: %03.3lf\n", _heading);
-    if (fabs(delta) > 0.03) { Turn(delta); }
+    if (fabs(delta) > 0.05) { Turn(delta); }
   }
 
   double GetTargetHeading()
@@ -425,7 +486,7 @@ int main(int argc, char **argv)
   wb_led_set(leds[LED_ON], true);
   
   r.PassiveWait(0.5);
-  r.TurnToHeading(r.GetTargetHeading());
+  // r.TurnToHeading(r.GetTargetHeading());
 
   while (true) {
     if (is_there_a_collision_at_left()) 
@@ -434,7 +495,7 @@ int main(int argc, char **argv)
       r.Backward(0.1);
       r.Turn(M_PI * -0.25);
       r.Forward(0.1);
-      r.TurnToHeading(r.GetTargetHeading());
+      // r.TurnToHeading(r.GetTargetHeading());
     } 
     else if (is_there_a_collision_at_right()) 
     {    
@@ -442,17 +503,46 @@ int main(int argc, char **argv)
       r.Backward(0.1);
       r.Turn(M_PI * -0.25);
       r.Forward(0.1);
-      r.TurnToHeading(r.GetTargetHeading());
+      // r.TurnToHeading(r.GetTargetHeading());
    }
    else 
    {    
+      double const d_left = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_LEFT]);
+      double const d_frontleft = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_LEFT]);
+      double const d_frontright = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]);
+      double const d_right = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]);
+
+      double const d_min = 0.1;
+      double const d_max = 0.3;
+
+      double const goalForce = 1.0;
+      double const avoidForce = 1.0;
+    
+      // Avoidance force in local coordinates
+      double const avoidForce_lr = 0; // smootherstep(d_right, d_max, d_min) - smootherstep(d_left, d_max, d_min);
+      double const avoidForce_fb = 0; // 0.5 * smootherstep(d_frontleft, d_max, d_min) + 0.5 * smootherstep(d_frontright, d_max, d_min);
+
+      // Goal force in local coordinates
+      double const goalHeading = r.GetTargetHeading() - r.m_theta;
+      double const goalForce_lr = cos(goalHeading);
+      double const goalForce_fb = sin(goalHeading);
+      
+      // Total force in local coordinates
+      double const totalForce_lr = goalForce * goalForce_lr - avoidForce * avoidForce_lr;
+      double const totalForce_fb = goalForce * goalForce_fb - avoidForce * avoidForce_fb;
+     
+      // Total force direction in local coordinates
+      double const forceHeading = atan2(totalForce_fb, totalForce_lr);
+      r.TurnToHeading(r.m_theta + forceHeading);
+      r.Forward();
+
       if (r.HasReachedTarget())
       {        
         //If the robot has reached its current target, turn in the correct direction and switch to next target
-        printf("Turning\n");
+        printf("Target reached\n");
         
-        r.Turn(-M_PI / 2);
-        r.PassiveWait(0.5);
+        // r.Turn(-M_PI / 2);
+        // r.PassiveWait(0.5);
         
         switch (r.CurrentDirection)
         {
@@ -473,7 +563,7 @@ int main(int argc, char **argv)
         r.CurrentTarget->X = r.NextTarget->X;
         r.CurrentTarget->Y = r.NextTarget->Y;
         n.SetNextTarget(&r);
-        r.TurnToHeading(r.GetTargetHeading());
+        // r.TurnToHeading(r.GetTargetHeading());
       }
       
       r.Forward();
