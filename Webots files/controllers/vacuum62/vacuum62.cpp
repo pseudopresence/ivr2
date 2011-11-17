@@ -65,15 +65,15 @@ static const char *receiver_name = "receiver";
 #define HALF_SPEED ((MAX_SPEED)/2.0)
 #define MIN_SPEED (-(MAX_SPEED))
 
-#define ROBOT_RADIUS 0.17
-#define ROBOT_DIAMETER 2 * ROBOT_RADIUS
+#define ROBOT_RADIUS 0.1675
+#define ROBOT_DIAMETER (2 * ROBOT_RADIUS)
 #define WHEEL_RADIUS 0.031
 #define AXLE_LENGTH 0.271756
 #define ENCODER_RESOLUTION 507.9188
 
 /* Room Size */
-#define MAX_ROOM_HEIGHT 6 - ROBOT_DIAMETER - 0.1
-#define MAX_ROOM_WIDTH 6 - ROBOT_DIAMETER - 0.1
+#define MAX_ROOM_HEIGHT (6 - ROBOT_DIAMETER)
+#define MAX_ROOM_WIDTH (6 - ROBOT_DIAMETER)
 
 enum Direction { LEFT, UP, RIGHT, DOWN };
 
@@ -226,7 +226,7 @@ class Robot
     double distance = (dl + dr) / 2;
     
     m_theta += turn;
-    m_theta = wrap(m_theta, 0, 2*M_PI);
+    m_theta = wrap(m_theta, 0, 2 * M_PI);
     m_x += distance * cos(m_theta);
     m_y += distance * -sin(m_theta);
     //printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf [T: %03.3lf, %03.3lf]\n", m_x, m_y, m_theta, CurrentTarget->X, CurrentTarget->Y);
@@ -274,10 +274,10 @@ class Robot
     
     double neg = (angle < 0.0) ? -1.0 : 1.0;
     
-    wb_differential_wheels_set_speed(neg*HALF_SPEED, -neg*HALF_SPEED);
+    wb_differential_wheels_set_speed(neg * HALF_SPEED, -neg * HALF_SPEED);
     
     double const start = m_theta;
-    double const end = wrap(start + angle, 0, 2*M_PI);
+    double const end = wrap(start + angle, 0, 2 * M_PI);
     double cur = start;
     do 
     {
@@ -299,7 +299,7 @@ class Robot
 
   double GetTargetHeading()
   {
-    return wrap(-atan2(CurrentTarget->Y - m_y, CurrentTarget->X - m_x), 0, 2*M_PI);
+    return wrap(-atan2(CurrentTarget->Y - m_y, CurrentTarget->X - m_x), 0, 2 * M_PI);
   }
   
   bool HasReachedTarget()
@@ -308,20 +308,20 @@ class Robot
     double const dy = m_y - CurrentTarget->Y;
     double const dd = (dx * dx) + (dy * dy);
     // printf("Distance^2 to target: %03.3f\n", dd);
-    return dd < 0.3;
+    return dd < 0.1;
     
     bool result = false;
     
     switch (CurrentDirection)
     {    
       case RIGHT:
-        result = fabs(m_y) <= CurrentTarget->Y;
+        result = m_y <= CurrentTarget->Y;
         break;
       case UP:
         result = m_x >= CurrentTarget->X;
         break;
       case LEFT:
-        result = fabs(m_y) >= CurrentTarget->Y;
+        result = m_y >= CurrentTarget->Y;
         break;
       case DOWN:
         result = m_x <= CurrentTarget->X;
@@ -411,7 +411,7 @@ int main(int argc, char **argv)
   r.PassiveWait(0.5);
   r.TurnToHeading(r.GetTargetHeading());
 
-  while (true) {
+  while (true) {    
     if (is_there_a_collision_at_left()) 
     {    
       printf("Left collision detected\n");
@@ -439,8 +439,8 @@ int main(int argc, char **argv)
         //If the robot has reached its current target, turn in the correct direction and switch to next target
         printf("Turning\n");
         
-        r.Turn(-M_PI / 2);
-        r.PassiveWait(0.5);
+        //r.Turn(-M_PI / 2);
+        //r.PassiveWait(0.5);
         
         switch (r.CurrentDirection)
         {
