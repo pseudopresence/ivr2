@@ -13,7 +13,7 @@ WorldInfo {
 }
 Viewpoint {
   orientation -0.104377 -0.903291 -0.416138 2.66688
-  position 0.562233 3.05055 -0.456589
+  position 0.957857 4.00494 -1.18141
   follow "vacu"
 }
 Background {
@@ -3625,8 +3625,8 @@ DEF VACU1 DifferentialWheels {
       rotation 0 0 1 0
       name "dist_right"
       lookupTable [
-        0.05 0 0
-        0.0501 1 0
+        0 0 0
+        3 3 0
       ]
       type "sonar"
     }
@@ -3635,8 +3635,8 @@ DEF VACU1 DifferentialWheels {
       rotation 0 1 0 1.5708
       name "dist_front_right"
       lookupTable [
-        0.2 0 0
-        0.2001 1 0
+        0 0 0
+        3 3 0
       ]
       type "sonar"
     }
@@ -3645,8 +3645,8 @@ DEF VACU1 DifferentialWheels {
       rotation 0 1 0 1.5708
       name "dist_front_left"
       lookupTable [
-        0.05 0 0
-        0.0501 1 0
+        0 0 0
+        3 3 0
       ]
       type "sonar"
     }
@@ -3655,8 +3655,8 @@ DEF VACU1 DifferentialWheels {
       rotation 0 1 0 -3.14
       name "dist_left"
       lookupTable [
-        0.05 0 0
-        0.0501 1 0
+        0 0 0
+        3 3 0
       ]
       type "sonar"
     }
