@@ -21,7 +21,7 @@
 #include <webots/camera.h>
 
 /* device stuff */
-// static WbDeviceTag camera; 
+static WbDeviceTag camera; 
 
 #define BUMPERS_NUMBER 2
 #define BUMPER_LEFT 0
@@ -60,7 +60,7 @@ static WbDeviceTag receiver;
 static const char *receiver_name = "receiver";
 
 /* Misc Stuff */
-#define MAX_SPEED (500) /* Units: mm/s */
+#define MAX_SPEED (100) /* Units: mm/s */
 #define NULL_SPEED (0)
 #define HALF_SPEED ((MAX_SPEED)/2.0)
 #define MIN_SPEED (-(MAX_SPEED))
@@ -417,7 +417,9 @@ int main(int argc, char **argv)
   printf("Controller of the iRobot Create robot started...\n");
   
   init_devices();
-  
+  camera = wb_robot_get_device("camera");
+  wb_camera_enable(camera, get_time_step());  
+
   srand(time(NULL));
   
   wb_led_set(leds[LED_ON], true);
@@ -476,6 +478,7 @@ int main(int argc, char **argv)
       
       r.Forward();
     } 
+    wb_camera_get_image(camera);
     fflush_ir_receiver();
     r.Step();
   }

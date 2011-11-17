@@ -3661,7 +3661,7 @@ DEF VACU1 DifferentialWheels {
       type "sonar"
     }
     DEF HEAD_CAMERA Camera {
-      translation 0 0.05 -0.15
+      translation 0 0.05 0.15
       children [
         Transform {
           translation 0 0 0.003
@@ -3683,7 +3683,7 @@ DEF VACU1 DifferentialWheels {
           ]
         }
       ]
-      fieldOfView 1.1
+      fieldOfView 2
       width 208
       height 156
       near 0.004
