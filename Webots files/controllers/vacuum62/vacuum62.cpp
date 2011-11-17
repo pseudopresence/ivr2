@@ -60,7 +60,7 @@ static WbDeviceTag receiver;
 static const char *receiver_name = "receiver";
 
 /* Misc Stuff */
-#define MAX_SPEED (500)
+#define MAX_SPEED (500) /* Units: mm/s */
 #define NULL_SPEED (0)
 #define HALF_SPEED ((MAX_SPEED)/2.0)
 #define MIN_SPEED (-(MAX_SPEED))
@@ -417,7 +417,7 @@ int main(int argc, char **argv)
       printf("Left collision detected\n");
       r.Backward();
       r.PassiveWait(0.2);
-      r.Turn(M_PI * 0.25);
+      r.Turn(M_PI * -0.25);
       r.Forward();
       r.PassiveWait(0.2);
       r.TurnToHeading(r.GetTargetHeading());
@@ -427,7 +427,7 @@ int main(int argc, char **argv)
       printf("Right collision detected\n");
       r.Backward();
       r.PassiveWait(0.2);
-      r.Turn(M_PI * 0.25);
+      r.Turn(M_PI * -0.25);
       r.Forward();
       r.PassiveWait(0.2);
       r.TurnToHeading(r.GetTargetHeading());
