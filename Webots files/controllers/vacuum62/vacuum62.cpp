@@ -76,6 +76,7 @@ static const char *receiver_name = "receiver";
 #define MAX_ROOM_WIDTH (6 - ROBOT_DIAMETER)
 
 enum Direction { LEFT, UP, RIGHT, DOWN };
+enum Odometry {NORMAL, REVERT, CATCH_UP};
 
 /* helper functions */
 
@@ -215,7 +216,7 @@ class Robot
     wb_differential_wheels_disable_encoders();
   }
   
-  void UpdateOdometry()
+  void UpdateOdometry(Odometry _updateType)
   {
     double encl = wb_differential_wheels_get_left_encoder();
     double encr = wb_differential_wheels_get_right_encoder();
@@ -227,21 +228,34 @@ class Robot
     
     m_theta += turn;
     m_theta = wrap(m_theta, 0, 2 * M_PI);
-    m_x += distance * cos(m_theta);
-    m_y += distance * -sin(m_theta);
+    
+    switch (_updateType)
+    {
+      case NORMAL:
+        m_x += distance * cos(m_theta);
+        m_y += distance * -sin(m_theta);
+        break;
+        
+      case REVERT:
+        m_x -= distance * cos(m_theta);
+        m_y -= distance * -sin(m_theta);
+        break;
+    }
     //printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf [T: %03.3lf, %03.3lf]\n", m_x, m_y, m_theta, CurrentTarget->X, CurrentTarget->Y);
   }
   
   void Step() {
     wb_differential_wheels_set_encoders(0.0, 0.0);
+    
     if (wb_robot_step(get_time_step()) == -1) {
       wb_robot_cleanup();
       exit(EXIT_SUCCESS);
     }
-    UpdateOdometry();
+    
+    UpdateOdometry(NORMAL);
   }
   
-  void PassiveWait(double sec) 
+  void PassiveWait(double _sec) 
   {
     double start_time = wb_robot_get_time();
     
@@ -249,7 +263,7 @@ class Robot
     {
       Step();
     } 
-    while((start_time + sec) > wb_robot_get_time());
+    while((start_time + _sec) > wb_robot_get_time());
   }
  
   void Forward(double _dist) /* distance in meters */
@@ -281,24 +295,28 @@ class Robot
     wb_differential_wheels_set_speed(-NULL_SPEED, -NULL_SPEED);
   }
   
-  void Turn(double angle)
+  void Turn(double _angle)
   {
     Stop();
     Step();
     
-    double neg = (angle < 0.0) ? -1.0 : 1.0;
+    double neg = (_angle < 0.0) ? -1.0 : 1.0;
     
     wb_differential_wheels_set_speed(neg * HALF_SPEED, -neg * HALF_SPEED);
     
     double const start = m_theta;
-    double const end = wrap(start + angle, 0, 2 * M_PI);
+    double const end = wrap(start + _angle, 0, 2 * M_PI);
     double cur = start;
+    
     do 
     {
       Step();
       cur = m_theta;
+      //printf("current:%f end:%f\n", cur, end);
     } 
-    while (fabs(wrap(end - cur, -M_PI, M_PI)) > 0.03);
+    while (fabs(wrap(end - cur, -M_PI, M_PI)) > 0.004);
+    
+    printf("current:%f end:%f delta:%f\n", cur, end, fabs(wrap(end - cur, -M_PI, M_PI)));
     
     Stop();
     Step();
@@ -308,7 +326,10 @@ class Robot
   {
     double delta = wrap(_heading - m_theta, -M_PI, M_PI);
     // printf("Turning to heading: %03.3lf\n", _heading);
-    if (fabs(delta) > 0.03) { Turn(delta); }
+    if (fabs(delta) > 0.01) 
+    {
+      Turn(delta); 
+    }
   }
 
   double GetTargetHeading()
@@ -318,15 +339,29 @@ class Robot
   
   bool HasReachedTarget()
   {
+    bool result = false;
+   
     double const dx = m_x - CurrentTarget->X;
     double const dy = m_y - CurrentTarget->Y;
     double const dd = (dx * dx) + (dy * dy);
     // printf("Distance^2 to target: %03.3f\n", dd);
-    return dd < 0.1;
+    if (dd < 0.1) 
+    {
+      //If the robot reached the target, make sure there is a wall at the expected distance
+      if (is_there_a_distance_at_front())
+      { 
+        result = true;
+      }
+      else
+      {
+        //If there is no wall, correct position estimate
+        UpdateOdometry(REVERT);          
+      }
+    }
+     
+    return result;
     
-    bool result = false;
-    
-    switch (CurrentDirection)
+    /*switch (CurrentDirection)
     {    
       case RIGHT:
         result = m_y <= CurrentTarget->Y;
@@ -345,7 +380,7 @@ class Robot
     //printf("Current location: %f %f\n", m_x, m_y);
     //printf("Is: %s %f %f\n", (m_y >= CurrentTarget->Y) ? "true" : "false", m_y, CurrentTarget->Y);
     
-    return result;
+    return result;*/
   }
 };
 
@@ -451,9 +486,6 @@ int main(int argc, char **argv)
         //If the robot has reached its current target, turn in the correct direction and switch to next target
         printf("Turning\n");
         
-        //r.Turn(-M_PI / 2);
-        //r.PassiveWait(0.5);
-        
         switch (r.CurrentDirection)
         {
           case RIGHT:
@@ -473,11 +505,12 @@ int main(int argc, char **argv)
         r.CurrentTarget->X = r.NextTarget->X;
         r.CurrentTarget->Y = r.NextTarget->Y;
         n.SetNextTarget(&r);
-        r.TurnToHeading(r.GetTargetHeading());
+        r.TurnToHeading(r.GetTargetHeading()); 
       }
       
       r.Forward();
     } 
+    
     wb_camera_get_image(camera);
     fflush_ir_receiver();
     r.Step();
