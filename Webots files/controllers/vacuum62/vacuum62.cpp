@@ -75,6 +75,11 @@ static const char *receiver_name = "receiver";
 #define MAX_ROOM_HEIGHT (6 - ROBOT_DIAMETER)
 #define MAX_ROOM_WIDTH (6 - ROBOT_DIAMETER)
 
+/* Precision constants */
+#define TURN_PRECISION 0.03
+#define ANGLE_PRECISION 0.05
+#define TARGET_PRECISION 0.1
+
 enum Direction { LEFT, UP, RIGHT, DOWN };
 enum Odometry {NORMAL, REVERT, CATCH_UP};
 
@@ -329,7 +334,7 @@ class Robot
         m_y -= distance * -sin(m_theta);
         break;
     }
-    //printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf [T: %03.3lf, %03.3lf]\n", m_x, m_y, m_theta, CurrentTarget->X, CurrentTarget->Y);
+    printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf [T: %03.3lf, %03.3lf]\n", m_x, m_y, m_theta, CurrentTarget->X, CurrentTarget->Y);
   }
   
   void Step() {
@@ -402,7 +407,7 @@ class Robot
       cur = m_theta;
       //printf("current:%f end:%f\n", cur, end);
     } 
-    while (fabs(wrap(end - cur, -M_PI, M_PI)) > 0.004);
+    while (fabs(wrap(end - cur, -M_PI, M_PI)) > TURN_PRECISION);
     
     printf("current:%f end:%f delta:%f\n", cur, end, fabs(wrap(end - cur, -M_PI, M_PI)));
     
@@ -415,7 +420,7 @@ class Robot
     double delta = wrap(_heading - m_theta, -M_PI, M_PI);
     // printf("Turning to heading: %03.3lf\n", _heading);
 
-    if (fabs(delta) > 0.01) 
+    if (fabs(delta) > ANGLE_PRECISION) 
     {
       Turn(delta); 
     }
@@ -434,7 +439,7 @@ class Robot
     double const dy = m_y - CurrentTarget->Y;
     double const dd = (dx * dx) + (dy * dy);
     // printf("Distance^2 to target: %03.3f\n", dd);
-    if (dd < 0.1) 
+    if (dd < TARGET_PRECISION) 
     {
       //If the robot reached the target, make sure there is a wall at the expected distance
       if (is_there_a_distance_at_front())
@@ -651,10 +656,6 @@ int main(int argc, char **argv)
       {        
         //If the robot has reached its current target, turn in the correct direction and switch to next target
         printf("Target reached\n");
-        
-
-        // r.Turn(-M_PI / 2);
-        // r.PassiveWait(0.5);
         
         switch (r.CurrentDirection)
         {
