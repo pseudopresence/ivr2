@@ -32,16 +32,18 @@ static const char *bumpers_name[BUMPERS_NUMBER] = {
   "bumper_right"
 };
 
-#define DISTANCE_SENSORS_NUMBER 4
+#define DISTANCE_SENSORS_NUMBER 5
 #define DISTANCE_SENSOR_LEFT 0
 #define DISTANCE_SENSOR_FRONT_LEFT 1
 #define DISTANCE_SENSOR_FRONT_RIGHT 2
-#define DISTANCE_SENSOR_RIGHT 3
+#define DISTANCE_SENSOR_DIAG_RIGHT 3
+#define DISTANCE_SENSOR_RIGHT 4
 static WbDeviceTag distance_sensors[DISTANCE_SENSORS_NUMBER];
 static const char *distance_sensors_name[DISTANCE_SENSORS_NUMBER] = {
   "dist_left",
   "dist_front_left",
   "dist_front_right",
+  "dist_diagright",
   "dist_right"
 };
 
@@ -320,7 +322,7 @@ class Robot
     double dl = encl / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by left wheel in meter
     double dr = encr / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by right wheel in meter
     
-    double const TURN_HACK_FACTOR = 1.04;
+    double const TURN_HACK_FACTOR = 1.040;
     double const DIST_HACK_FACTOR = 0.97;
     double turn = TURN_HACK_FACTOR * (dl - dr) / AXLE_LENGTH; // delta orientation in radian
     double distance = DIST_HACK_FACTOR * (dl + dr) / 2;
@@ -586,19 +588,25 @@ int main(int argc, char **argv)
    }
    else 
    {    
-      double const d_left = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_LEFT]);
-      double const d_frontleft = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_LEFT]);
-      double const d_frontright = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]);
-      double const d_right = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]);
-
+      int avoid_sensors[] = {
+        DISTANCE_SENSOR_FRONT_LEFT,
+        DISTANCE_SENSOR_FRONT_RIGHT,
+        DISTANCE_SENSOR_DIAG_RIGHT,
+        DISTANCE_SENSOR_RIGHT
+      };
+      int N = sizeof(avoid_sensors)/sizeof(int);
       double const d_min = 0.03;
       double const d_max = 0.15;
-      // double const l = pid.Step(d_target, d_right);
-      double const l_right = 1 - smootherstep(d_min, d_max, d_right);
-      double const l_fl = 1 - smootherstep(d_min, d_max, d_frontleft);
-      double const l_fr = 1 - smootherstep(d_min, d_max, d_frontright);
-
-      double const l_avoid = 1.0 * max(l_right, max(l_fl, l_fr));
+ 
+      double l_max = 0;
+      for (int i = 0; i < N; ++i)
+      {
+        double const dist = wb_distance_sensor_get_value(distance_sensors[avoid_sensors[i]]);
+        double const l = 1 - smootherstep(d_min, d_max, dist);
+        l_max = max(l, l_max);
+      }
+     // double const l = pid.Step(d_target, d_right);
+      double const l_avoid = 1.0 * l_max;
       double const l_goal = -0.7 * wrap(r.GetTargetHeading() - r.m_theta, -M_PI, M_PI);
 
       Vec2 const m_avoid = speedsFromControlParam(l_avoid);
