@@ -119,6 +119,11 @@ static double clamp(double _x, double const _min, double const _max)
   }
 }
 
+static double max(double const _a, double const _b)
+{
+   return (_a > _b) ? _a : _b;
+}
+
 /* smootherstep interpolation function from http://en.wikipedia.org/wiki/Smoothstep */
 static float smootherstep(float edge0, float edge1, float x)
 {
@@ -190,6 +195,11 @@ inline Vec2 operator*(double const _s, Vec2 const& _v)
 inline Vec2 operator*(Vec2 const& _v, double const _s)
 {
   return _s * _v;
+}
+
+Vec2 speedsFromControlParam(double const _l)
+{
+  return Vec2(speedFromControlParam(_l), speedFromControlParam(-_l));
 }
 
 static int get_time_step() {
@@ -620,11 +630,22 @@ int main(int argc, char **argv)
       double const d_frontright = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]);
       double const d_right = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]);
 
-      double const l = pid.Step(d_target, d_right);
-      double const s_left = speedFromControlParam(l);
-      double const s_right = speedFromControlParam(-l);
+      double const d_min = 0.03;
+      double const d_max = 0.15;
+      // double const l = pid.Step(d_target, d_right);
+      double const l_right = 1 - smootherstep(d_min, d_max, d_right);
+      double const l_fl = 1 - smootherstep(d_min, d_max, d_frontleft);
+      double const l_fr = 1 - smootherstep(d_min, d_max, d_frontright);
 
-      wb_differential_wheels_set_speed(MAX_SPEED * s_left, MAX_SPEED * s_right);
+      double const l_avoid = 1.0 * max(l_right, max(l_fl, l_fr));
+      double const l_goal = -0.7 * wrap(r.GetTargetHeading() - r.m_theta, -M_PI, M_PI);
+
+      Vec2 const m_avoid = speedsFromControlParam(l_avoid);
+      Vec2 const m_goal = speedsFromControlParam(l_goal);
+
+      Vec2 const result = l_avoid * m_avoid + (1 - l_avoid) * m_goal;
+
+      wb_differential_wheels_set_speed(MAX_SPEED * clamp(result.m_x, -1, 1), MAX_SPEED * clamp(result.m_y, -1, 1));
 
       /*
       double const goalWeight = 1.0;
