@@ -13,7 +13,7 @@ WorldInfo {
 }
 Viewpoint {
   orientation -0.104377 -0.903291 -0.416138 2.66688
-  position 0.957857 4.00494 -1.18141
+  position 1.05635 4.21597 -0.954877
   follow "vacu"
 }
 Background {
@@ -3629,6 +3629,8 @@ DEF VACU1 DifferentialWheels {
         3 3 0
       ]
       type "sonar"
+      numberOfRays 4
+      aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_FRONT_RIGHT DistanceSensor {
       translation 0.04 -0.035 -0.15
@@ -3639,6 +3641,8 @@ DEF VACU1 DifferentialWheels {
         3 3 0
       ]
       type "sonar"
+      numberOfRays 4
+      aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_FRONT_LEFT DistanceSensor {
       translation -0.04 -0.035 -0.15
@@ -3649,6 +3653,8 @@ DEF VACU1 DifferentialWheels {
         3 3 0
       ]
       type "sonar"
+      numberOfRays 4
+      aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_LEFT DistanceSensor {
       translation -0.15 -0.035 -0.07
@@ -3659,6 +3665,8 @@ DEF VACU1 DifferentialWheels {
         3 3 0
       ]
       type "sonar"
+      numberOfRays 4
+      aperture 0.25
     }
     DEF HEAD_CAMERA Camera {
       translation 0 0.05 0.15
