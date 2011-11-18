@@ -345,7 +345,7 @@ class Robot
         break;
     }
     
-    //printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf [T: %03.3lf, %03.3lf]\n", m_x, m_y, m_theta, CurrentTarget->X, CurrentTarget->Y);
+    //printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf [T: %03.3lf, %03.3lf]\n", m_x, m_y, m_theta * 180 / M_PI, CurrentTarget->X, CurrentTarget->Y);
   }
   
   void Step() {
@@ -452,6 +452,9 @@ class Robot
     // printf("Distance^2 to target: %03.3f\n", dd);
     if (dd < TARGET_PRECISION) 
     {
+      //m_x = CurrentTarget->X;
+      //m_y = CurrentTarget->Y;
+      
       return true;
       //If the robot reached the target, make sure there is a wall at the expected distance
       if (is_there_a_distance_at_front())
@@ -503,7 +506,10 @@ public:
     m_targetIndex = 0;
   }
   
-  void SetNextTarget(Robot* robot)
+  /* Calculates the coordinates of the next target position
+     and returns the index of the target in the direction of movement
+  */
+  int SetNextTarget(Robot* robot)
   {
     m_targetIndex = wrap(++m_targetIndex, 0, TARGET_COUNT);
     
@@ -590,6 +596,8 @@ public:
     
     printf("Target index: %d\n", m_targetIndex);
     printf("Current target: %f %f\n", robot->CurrentTarget->X, robot->CurrentTarget->Y);
+    
+    return m_targetIndex;
   }
 };
 
@@ -634,6 +642,7 @@ int main(int argc, char **argv)
  
   r.Init();
   
+  int targetIndex = 0;
   //Robots initial movement is upwards towards the first target position
   n.SetNextTarget(&r);
  
@@ -650,8 +659,6 @@ int main(int argc, char **argv)
   Vec2 prevForce;
   
   r.PassiveWait(0.5);
-  
-  double d_target = 0.1;
 
   while (true) {    
     if (is_there_a_collision_at_left()) 
@@ -739,9 +746,13 @@ int main(int argc, char **argv)
             break;
         }*/
         
-        n.SetNextTarget(&r);
-
-        //r.TurnToHeading(r.GetTargetHeading()); 
+        targetIndex = n.SetNextTarget(&r);
+        
+        if (targetIndex == 1)
+        {
+          printf("Turning\n");
+          r.TurnToHeading(r.GetTargetHeading()); 
+        }
       }
     } 
     
