@@ -77,8 +77,11 @@ static const char *receiver_name = "receiver";
 
 /* Precision constants */
 #define TURN_PRECISION 0.03
-#define ANGLE_PRECISION 0.05
+#define ANGLE_PRECISION 0.001
 #define TARGET_PRECISION 0.1
+
+//Number of targets in one direction of movement
+#define TARGET_COUNT 12
 
 enum Direction { LEFT, UP, RIGHT, DOWN };
 enum Odometry {NORMAL, REVERT, CATCH_UP};
@@ -289,7 +292,6 @@ class Robot
  public:
   Direction CurrentDirection;
   Location* CurrentTarget;
-  Location* NextTarget;
   
   Robot(double _x, double _y, double _theta):
     m_x(_x),
@@ -297,15 +299,13 @@ class Robot
 
     m_theta(_theta)
   {
-    CurrentDirection = RIGHT;
+    CurrentDirection = UP;
     CurrentTarget = new Location(_x, _y);
-    NextTarget = new Location(_x, _y);
   }
 
   ~Robot()
   {
     delete CurrentTarget;
-    delete NextTarget;
   }
   
   void Init()
@@ -344,7 +344,8 @@ class Robot
         m_y -= distance * -sin(m_theta);
         break;
     }
-    printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf [T: %03.3lf, %03.3lf]\n", m_x, m_y, m_theta, CurrentTarget->X, CurrentTarget->Y);
+    
+    //printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf [T: %03.3lf, %03.3lf]\n", m_x, m_y, m_theta, CurrentTarget->X, CurrentTarget->Y);
   }
   
   void Step() {
@@ -451,6 +452,7 @@ class Robot
     // printf("Distance^2 to target: %03.3f\n", dd);
     if (dd < TARGET_PRECISION) 
     {
+      return true;
       //If the robot reached the target, make sure there is a wall at the expected distance
       if (is_there_a_distance_at_front())
       { 
@@ -492,47 +494,102 @@ class Navigation
 {
 private:
   double m_indent;
+  int m_targetIndex;
   
 public:
   Navigation()
   {
     m_indent = 0;
+    m_targetIndex = 0;
   }
   
   void SetNextTarget(Robot* robot)
   {
+    m_targetIndex = wrap(++m_targetIndex, 0, TARGET_COUNT);
+    
+    double targetX = 0;
+    double targetY = 0;
+    
+    //Detect the next target depending on which direction the robot comes from
     switch (robot->CurrentDirection)
     {
-      case RIGHT:
-        robot->NextTarget->X = MAX_ROOM_WIDTH - m_indent;
-        robot->NextTarget->Y = m_indent;
-        
-        break;
-        
       case UP:
-        robot->NextTarget->X = MAX_ROOM_WIDTH - m_indent;
-        robot->NextTarget->Y = MAX_ROOM_HEIGHT - m_indent;
+      
+        targetX = MAX_ROOM_WIDTH - m_indent;
+        targetY = m_indent;
+        
+        if (m_targetIndex < TARGET_COUNT)
+        {         
+          //If it's an intermediate target (non at the vertices of the spiral), calculate it relative to the starting vertex
+          targetX = (targetX - m_indent) * m_targetIndex / TARGET_COUNT;
+        }
+        else
+        {
+          robot->CurrentDirection = LEFT;
+        }
         
         break;
         
       case LEFT:
-        robot->NextTarget->Y = MAX_ROOM_HEIGHT - m_indent;
-        robot->NextTarget->X = m_indent;
+        targetX = MAX_ROOM_WIDTH - m_indent;
+        targetY = MAX_ROOM_HEIGHT - m_indent;
+        
+        if (m_targetIndex < TARGET_COUNT)
+        {
+          //If it's an intermediate target (non at the vertices of the spiral), calculate it relative to the starting vertex
+          targetY = (targetY - m_indent) * m_targetIndex / TARGET_COUNT;
+        }
+        else
+        {
+          robot->CurrentDirection = DOWN;
+        }
         
         break;
         
-      case DOWN:
-        robot->NextTarget->X = m_indent;
+      case DOWN:        
+        targetX = m_indent;
+        targetY = MAX_ROOM_HEIGHT - m_indent;
         
-        m_indent += ROBOT_DIAMETER;
+        if (m_targetIndex < TARGET_COUNT)
+        {
+          //If it's an intermediate target (non at the vertices of the spiral), calculate it relative to the starting vertex
+          targetX = (MAX_ROOM_WIDTH - m_indent - targetX) * (1 - (double)m_targetIndex / (double)TARGET_COUNT);
+        }
+        else
+        {
+          robot->CurrentDirection = RIGHT;
+        }
         
-        robot->NextTarget->Y = m_indent;
+        break;
+        
+      case RIGHT:
+        targetX = m_indent;    
+        
+        if (m_targetIndex == 1)
+        {
+          m_indent += ROBOT_DIAMETER;
+        }
+        
+        targetY = m_indent;
+        
+        if (m_targetIndex < TARGET_COUNT)
+        {
+          //If it's an intermediate target (non at the vertices of the spiral), calculate it relative to the starting vertex
+          targetY = (MAX_ROOM_HEIGHT - m_indent - targetY + ROBOT_DIAMETER) * (1 - (double)m_targetIndex / (double)TARGET_COUNT);
+        }
+        else
+        {
+          robot->CurrentDirection = UP;
+        }
         
         break;
     }
     
+    robot->CurrentTarget->X = targetX;
+    robot->CurrentTarget->Y = targetY;
+    
+    printf("Target index: %d\n", m_targetIndex);
     printf("Current target: %f %f\n", robot->CurrentTarget->X, robot->CurrentTarget->Y);
-    printf("Next target: %f %f\n", robot->NextTarget->X, robot->NextTarget->Y);
   }
 };
 
@@ -579,12 +636,6 @@ int main(int argc, char **argv)
   
   //Robots initial movement is upwards towards the first target position
   n.SetNextTarget(&r);
-  r.CurrentDirection = UP;
-  r.CurrentTarget->X = r.NextTarget->X;
-  r.CurrentTarget->Y = r.NextTarget->Y;
-  
-  //Look ahead for 1 target
-  n.SetNextTarget(&r);
  
   printf("Controller of the iRobot Create robot started...\n");
   
@@ -599,10 +650,8 @@ int main(int argc, char **argv)
   Vec2 prevForce;
   
   r.PassiveWait(0.5);
-  // r.TurnToHeading(r.GetTargetHeading());
   
   double d_target = 0.1;
-  PIDController pid(1, 0, -10);
 
   while (true) {    
     if (is_there_a_collision_at_left()) 
@@ -611,8 +660,6 @@ int main(int argc, char **argv)
       r.Backward(0.1);
       r.Turn(M_PI * -0.25);
       r.Forward(0.1);
-      // r.TurnToHeading(r.GetTargetHeading());
-      // d_target += 0.05;
     } 
     else if (is_there_a_collision_at_right()) 
     {    
@@ -620,8 +667,6 @@ int main(int argc, char **argv)
       r.Backward(0.1);
       r.Turn(M_PI * -0.25);
       r.Forward(0.1);
-      // d_target += 0.05;
-      // r.TurnToHeading(r.GetTargetHeading());
    }
    else 
    {    
@@ -678,7 +723,7 @@ int main(int argc, char **argv)
         //If the robot has reached its current target, turn in the correct direction and switch to next target
         printf("Target reached\n");
         
-        switch (r.CurrentDirection)
+        /*switch (r.CurrentDirection)
         {
           case RIGHT:
             r.CurrentDirection = UP;
@@ -692,16 +737,12 @@ int main(int argc, char **argv)
           case DOWN:
             r.CurrentDirection = RIGHT;
             break;
-        }
+        }*/
         
-        r.CurrentTarget->X = r.NextTarget->X;
-        r.CurrentTarget->Y = r.NextTarget->Y;
         n.SetNextTarget(&r);
 
-        r.TurnToHeading(r.GetTargetHeading()); 
+        //r.TurnToHeading(r.GetTargetHeading()); 
       }
-      
-      // r.Forward();
     } 
     
     wb_camera_get_image(camera);
