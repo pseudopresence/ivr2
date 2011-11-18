@@ -320,8 +320,10 @@ class Robot
     double dl = encl / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by left wheel in meter
     double dr = encr / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by right wheel in meter
     
-    double turn = (dl - dr) / AXLE_LENGTH; // delta orientation in radian
-    double distance = (dl + dr) / 2;
+    double const TURN_HACK_FACTOR = 1.04;
+    double const DIST_HACK_FACTOR = 0.97;
+    double turn = TURN_HACK_FACTOR * (dl - dr) / AXLE_LENGTH; // delta orientation in radian
+    double distance = DIST_HACK_FACTOR * (dl + dr) / 2;
     
     m_theta += turn;
     m_theta = wrap(m_theta, 0, 2*M_PI);
@@ -603,6 +605,8 @@ int main(int argc, char **argv)
       Vec2 const m_goal = speedsFromControlParam(l_goal);
 
       Vec2 const result = l_avoid * m_avoid + (1 - l_avoid) * m_goal;
+
+      // TODO: 'normalise' this so that at least one component is at max speed
 
       wb_differential_wheels_set_speed(MAX_SPEED * clamp(result.m_x, -1, 1), MAX_SPEED * clamp(result.m_y, -1, 1));
 
