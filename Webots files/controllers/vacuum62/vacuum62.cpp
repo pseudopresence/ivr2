@@ -122,9 +122,21 @@ static float smootherstep(float edge0, float edge1, float x)
   return x*x*x*(x*(x*6 - 15) + 10);
 }
 
-static double forceFromDist(double _dist)
+static double forceFromDist(double const _dist)
 {
-  return 1 - smootherstep(0.1, 0.2, _dist);
+  return 1 - smootherstep(0.05, 0.1, _dist);
+}
+
+static double speedFromControlParam(double const _param)
+{
+  if (_param < 0)
+  {
+    return 1;
+  }
+  else
+  {
+    return 1 - 2*_param;
+  }
 }
 
 class Vec2
@@ -473,7 +485,38 @@ public:
   }
 };
 
+class PIDController
+{
+  public:
+    PIDController(double _Kp, double _Ki, double _Kd) : m_Kp(_Kp), m_Ki(_Ki), m_Kd(_Kd), m_prev(0), m_sum(0), m_firstStep(true) {}
 
+    double Step(double _goal, double _curr)
+    {
+      // There's no sensible initialisation value of m_prev before the first Step(), so have a special case
+      if (m_firstStep)
+      {
+        m_prev = _curr;
+        m_firstStep = false;
+      }
+
+      double const e = _goal - _curr;
+      m_sum += e;
+
+      double const v = m_Kp * e + m_Ki * m_sum + m_Kd * (_curr - m_prev);
+      
+      m_prev = _curr;
+      return v;
+    }
+  private:
+    double const m_Kp;
+    double const m_Ki;
+    double const m_Kd;
+
+    double m_prev;
+    double m_sum;
+
+    bool m_firstStep;
+};
 
 /* main */
 int main(int argc, char **argv)
@@ -506,6 +549,9 @@ int main(int argc, char **argv)
   
   r.PassiveWait(0.5);
   // r.TurnToHeading(r.GetTargetHeading());
+  
+  double d_target = 0.1;
+  PIDController pid(1, 0, -10);
 
   while (true) {
     if (is_there_a_collision_at_left()) 
@@ -515,6 +561,7 @@ int main(int argc, char **argv)
       r.Turn(M_PI * -0.25);
       r.Forward(0.1);
       // r.TurnToHeading(r.GetTargetHeading());
+      // d_target += 0.05;
     } 
     else if (is_there_a_collision_at_right()) 
     {    
@@ -522,6 +569,7 @@ int main(int argc, char **argv)
       r.Backward(0.1);
       r.Turn(M_PI * -0.25);
       r.Forward(0.1);
+      // d_target += 0.05;
       // r.TurnToHeading(r.GetTargetHeading());
    }
    else 
@@ -531,6 +579,13 @@ int main(int argc, char **argv)
       double const d_frontright = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]);
       double const d_right = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]);
 
+      double const l = pid.Step(d_target, d_right);
+      double const s_left = speedFromControlParam(l);
+      double const s_right = speedFromControlParam(-l);
+
+      wb_differential_wheels_set_speed(MAX_SPEED * s_left, MAX_SPEED * s_right);
+
+      /*
       double const goalWeight = 1.0;
       double const avoidWeight = 10.0;
     
@@ -547,13 +602,14 @@ int main(int argc, char **argv)
       Vec2 const totalForceLocal = goalWeight * goalForce - avoidWeight * avoidForce;
       Vec2 const totalForce = totalForceLocal.RotatedBy(r.m_theta);
 
-      Vec2 const curForce = 0.5 * totalForce + 0.5 * prevForce;
+      Vec2 const curForce = 0.1 * totalForce + 0.9 * prevForce;
       prevForce = curForce;
 
       // Total force direction in local coordinates
       double const forceHeading = curForce.GetDir(); 
       r.TurnToHeading(forceHeading);
       r.Forward();
+      */
 
       if (r.HasReachedTarget())
       {        
@@ -585,7 +641,7 @@ int main(int argc, char **argv)
         // r.TurnToHeading(r.GetTargetHeading());
       }
       
-      r.Forward();
+      // r.Forward();
     } 
     wb_camera_get_image(camera);
     fflush_ir_receiver();
