@@ -3629,6 +3629,7 @@ DEF VACU1 DifferentialWheels {
         3 3 0
       ]
       type "sonar"
+      numberOfRays 4
       aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_DIAGRIGHT DistanceSensor {
@@ -3640,6 +3641,7 @@ DEF VACU1 DifferentialWheels {
         3 3 0
       ]
       type "sonar"
+      numberOfRays 4
       aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_FRONT_RIGHT DistanceSensor {
@@ -3651,6 +3653,7 @@ DEF VACU1 DifferentialWheels {
         3 3 0
       ]
       type "sonar"
+      numberOfRays 4
       aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_FRONT_LEFT DistanceSensor {
@@ -3662,6 +3665,7 @@ DEF VACU1 DifferentialWheels {
         3 3 0
       ]
       type "sonar"
+      numberOfRays 4
       aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_LEFT DistanceSensor {
@@ -3673,6 +3677,7 @@ DEF VACU1 DifferentialWheels {
         3 3 0
       ]
       type "sonar"
+      numberOfRays 4
       aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_LEFT DistanceSensor {
@@ -3684,6 +3689,7 @@ DEF VACU1 DifferentialWheels {
         3 3 0
       ]
       type "sonar"
+      numberOfRays 4
       aperture 0.25
     }
     DEF HEAD_CAMERA Camera {
