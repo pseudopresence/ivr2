@@ -20,6 +20,9 @@
 #include <webots/touch_sensor.h>
 #include <webots/camera.h>
 
+#include "util.h"
+#include "vec2.h"
+
 /* device stuff */
 static WbDeviceTag camera; 
 
@@ -32,19 +35,21 @@ static const char *bumpers_name[BUMPERS_NUMBER] = {
   "bumper_right"
 };
 
-#define DISTANCE_SENSORS_NUMBER 5
+#define DISTANCE_SENSORS_NUMBER 6
 #define DISTANCE_SENSOR_LEFT 0
 #define DISTANCE_SENSOR_FRONT_LEFT 1
 #define DISTANCE_SENSOR_FRONT_RIGHT 2
 #define DISTANCE_SENSOR_DIAG_RIGHT 3
 #define DISTANCE_SENSOR_RIGHT 4
+#define DISTANCE_SENSOR_DIAG_LEFT 5
 static WbDeviceTag distance_sensors[DISTANCE_SENSORS_NUMBER];
 static const char *distance_sensors_name[DISTANCE_SENSORS_NUMBER] = {
   "dist_left",
   "dist_front_left",
   "dist_front_right",
   "dist_diagright",
-  "dist_right"
+  "dist_right",
+  "dist_diagleft"
 };
 
 #define LEDS_NUMBER 3
@@ -90,54 +95,6 @@ enum Odometry {NORMAL, REVERT, CATCH_UP};
 
 /* helper functions */
 
-/* random double [0.0 - 1.0] */
-static double randdouble() {
-  return rand() / ((double)RAND_MAX + 1);
-}
-
-/* wrap a value into the given range, for example -M_PI to M_PI */
-static double wrap(double _x, double const _min, double const _max)
-{
-   while (_x < _min)
-   {
-     _x += (_max - _min);
-   }
-
-   while (_x > _max)
-   {
-     _x -= (_max - _min);
-   }
-
-   return _x;
-}
-
-/* clamp a value to the given range, for example 0 to 1 */
-static double clamp(double _x, double const _min, double const _max)
-{
-  if ( _x < _min )
-  {
-    return _min;
-  } else if ( _max < _x ) {
-    return _max;
-  } else {
-    return _x;
-  }
-}
-
-static double max(double const _a, double const _b)
-{
-   return (_a > _b) ? _a : _b;
-}
-
-/* smootherstep interpolation function from http://en.wikipedia.org/wiki/Smoothstep */
-static float smootherstep(float edge0, float edge1, float x)
-{
-  // Scale, and clamp x to 0..1 range
-  x = clamp((x - edge0)/(edge1 - edge0), 0, 1);
-  // Evaluate polynomial
-  return x*x*x*(x*(x*6 - 15) + 10);
-}
-
 static double forceFromDist(double const _dist)
 {
   return 1 - smootherstep(0.05, 0.1, _dist);
@@ -153,53 +110,6 @@ static double speedFromControlParam(double const _param)
   {
     return 1 - 2*_param;
   }
-}
-
-class Vec2
-{
-public:
-  double m_x;
-  double m_y;
-
-  Vec2() : m_x(0), m_y(0) {}
-  Vec2(double const _x, double const _y) : m_x(_x), m_y(_y) {}
-  Vec2(Vec2 const& _v) : m_x(_v.m_x), m_y(_v.m_y) {}
-
-  Vec2 const& operator=(Vec2 const& _v) { m_x = _v.m_x; m_y = _v.m_y; return *this; }
-
-  double GetDir() const { return atan2(m_y, m_x); }
-  static Vec2 FromDir(double const _dir) { return Vec2(cos(_dir), sin(_dir)); }
-  
-  static Vec2 XAxis() { return Vec2(1, 0); }
-  static Vec2 YAxis() { return Vec2(0, 1); }
-
-  Vec2 RotatedBy(double const _theta) const
-  {
-    return Vec2(
-        m_x * cos(_theta) - m_y * sin(_theta),
-        m_x * sin(_theta) + m_y * cos(_theta)
-    );
-  }
-};
-
-inline Vec2 operator+(Vec2 const& _l, Vec2 const& _r)
-{
-  return Vec2(_l.m_x + _r.m_x, _l.m_y + _r.m_y);
-}
-
-inline Vec2 operator-(Vec2 const& _l, Vec2 const& _r)
-{
-  return Vec2(_l.m_x - _r.m_x, _l.m_y - _r.m_y);
-}
-
-inline Vec2 operator*(double const _s, Vec2 const& _v)
-{
-  return Vec2(_v.m_x * _s, _v.m_y * _s);
-}
-
-inline Vec2 operator*(Vec2 const& _v, double const _s)
-{
-  return _s * _v;
 }
 
 Vec2 speedsFromControlParam(double const _l)
@@ -531,7 +441,7 @@ public:
         if (m_targetIndex < TARGET_COUNT)
         {         
           //If it's an intermediate target (non at the vertices of the spiral), calculate it relative to the starting vertex
-          targetX = (targetX - m_indent) * m_targetIndex / TARGET_COUNT;
+          targetX = (targetX - m_indent) * (double)m_targetIndex / TARGET_COUNT;
         }
         else
         {
@@ -547,7 +457,7 @@ public:
         if (m_targetIndex < TARGET_COUNT)
         {
           //If it's an intermediate target (non at the vertices of the spiral), calculate it relative to the starting vertex
-          targetY = (targetY - m_indent) * m_targetIndex / TARGET_COUNT;
+          targetY = (targetY - m_indent) * (double)m_targetIndex / TARGET_COUNT;
         }
         else
         {
@@ -685,7 +595,8 @@ int main(int argc, char **argv)
         DISTANCE_SENSOR_FRONT_LEFT,
         DISTANCE_SENSOR_FRONT_RIGHT,
         DISTANCE_SENSOR_DIAG_RIGHT,
-        DISTANCE_SENSOR_RIGHT
+        DISTANCE_SENSOR_RIGHT,
+        DISTANCE_SENSOR_DIAG_LEFT
       };
       int N = sizeof(avoid_sensors)/sizeof(int);
       double const d_min = 0.03;
