@@ -38,7 +38,7 @@ CFLAGS=-I"$(WEBOTS_HOME)/include/controller/c"
 ### if your Java controller needs additional libraries, you should define
 ### the CLASSPATH environment variable as explained in the Webots User Guide
 # CLASSPATH=relative/mylib.jar
-
+CXX += -v
 ### Do not modify: this includes Webots global Makefile.include
 space :=
 space +=
