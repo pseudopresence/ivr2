@@ -8,7 +8,7 @@
 ### Revised: Yvan Bourquin - September 30th, 2009.
 ###
 ### Uncomment the variables to customize the Makefile
-
+WEBOTS_HOME=/opt/webots
 ### -----C Sources-----
 ###
 ### if your controller uses several C sources files:
@@ -43,5 +43,4 @@ CFLAGS=-I"$(WEBOTS_HOME)/include/controller/c"
 space :=
 space +=
 WEBOTS_HOME_PATH=$(subst $(space),\ ,$(strip $(subst \,/,$(WEBOTS_HOME))))
-include $(WEBOTS_HOME_PATH)/resources/controllers/Makefile.include
-###include $(WEBOTS_HOME_PATH)/resources/projects/default/controllers/Makefile.include
+include $(WEBOTS_HOME_PATH)/resources/projects/default/controllers/Makefile.include
