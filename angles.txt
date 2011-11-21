@@ -1,0 +1,5 @@
+right and 45 deg up: 0.000m, 0.000m, 1.000m, 0.785rad
+right-front 45 deg up: 0.281m, 0.678m, 0.678m, 1.096rad
+front and 45 deg up: 0.357m, 0.862m, 0.357m, 1.717rad
+left-front 45 deg up: 0.377m, 0.912m, 0.156m, 2.418rad
+

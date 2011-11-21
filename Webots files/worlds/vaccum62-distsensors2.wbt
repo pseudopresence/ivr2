@@ -12,8 +12,8 @@ WorldInfo {
   title "LIS-EPFL Blimp"
 }
 Viewpoint {
-  orientation -0.00139115 -0.74839 -0.663257 3.12026
-  position 2.82738 2.07218 2.77354
+  orientation 0.0157264 -0.707244 -0.706794 3.15602
+  position 2.70421 3.48762 1.30294
   follow "vacu"
 }
 Background {
@@ -3622,62 +3622,68 @@ DEF VACU1 DifferentialWheels {
     }
     DEF CREATE_DIST_SENSOR_RIGHT DistanceSensor {
       translation 0.15 -0.035 -0.07
-      rotation 0 0 1 0
+      rotation 0 0 1 0.785402
       name "dist_right"
       lookupTable [
         0 0 0
         3 3 0
       ]
       type "sonar"
-      numberOfRays 4
       aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_DIAGRIGHT DistanceSensor {
       translation 0.1 -0.035 -0.13
-      rotation 0 1 0 0.785398
+      rotation 0.281235 0.678567 0.678567 1.096
       name "dist_diagright"
       lookupTable [
         0 0 0
         3 3 0
       ]
       type "sonar"
-      numberOfRays 4
       aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_FRONT_RIGHT DistanceSensor {
       translation 0.04 -0.035 -0.15
-      rotation 0 1 0 1.5708
+      rotation 0.357368 0.862888 0.357368 1.717
       name "dist_front_right"
       lookupTable [
         0 0 0
         3 3 0
       ]
       type "sonar"
-      numberOfRays 4
       aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_FRONT_LEFT DistanceSensor {
       translation -0.04 -0.035 -0.15
-      rotation 0 1 0 1.5708
+      rotation 0.357368 0.862888 0.357368 1.717
       name "dist_front_left"
       lookupTable [
         0 0 0
         3 3 0
       ]
       type "sonar"
-      numberOfRays 4
+      aperture 0.25
+    }
+    DEF CREATE_DIST_SENSOR_LEFT DistanceSensor {
+      translation -0.1 -0.035 -0.13
+      rotation 0.377338 0.912818 0.15614 2.418
+      name "dist_diagleft"
+      lookupTable [
+        0 0 0
+        3 3 0
+      ]
+      type "sonar"
       aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_LEFT DistanceSensor {
       translation -0.15 -0.035 -0.07
-      rotation 0 1 0 -3.14
+      rotation 0.382411 0.923992 0 -3.14159
       name "dist_left"
       lookupTable [
         0 0 0
         3 3 0
       ]
       type "sonar"
-      numberOfRays 4
       aperture 0.25
     }
     DEF HEAD_CAMERA Camera {
