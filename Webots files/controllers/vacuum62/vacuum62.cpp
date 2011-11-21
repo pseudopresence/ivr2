@@ -412,21 +412,26 @@ class Navigation
 private:
   double m_indent;
   int m_targetIndex;
+  double m_targetStartTime;
   
 public:
   Navigation()
   {
     m_indent = 0;
     m_targetIndex = 0;
+    m_targetStartTime = 0;
   }
-  
+ 
+  double GetTargetStartTime() const { return m_targetStartTime; }
+
   /* Calculates the coordinates of the next target position
      and returns the index of the target in the direction of movement
   */
   int SetNextTarget(Robot* robot)
   {
     m_targetIndex = wrap(++m_targetIndex, 0, TARGET_COUNT);
-    
+    m_targetStartTime = wb_robot_get_time();
+
     double targetX = 0;
     double targetY = 0;
     
@@ -648,7 +653,8 @@ int main(int argc, char **argv)
       r.Forward();
       */
 
-      if (r.HasReachedTarget())
+      double const TARGET_TIMEOUT = 4;
+      if (r.HasReachedTarget() || wb_robot_get_time() - n.GetTargetStartTime() > TARGET_TIMEOUT)
       {        
         //If the robot has reached its current target, turn in the correct direction and switch to next target
         printf("Target reached\n");
