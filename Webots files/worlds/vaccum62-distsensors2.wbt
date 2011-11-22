@@ -3465,11 +3465,6 @@ DEF VACU1 DifferentialWheels {
         mass 0.05
       }
     }
-    DEF CREATE_RECEIVER Receiver {
-      translation 0 0.037 -0.152
-      type "infra-red"
-      channel 1
-    }
     DEF CREATE_BUMPER_LEFT TouchSensor {
       translation -2.62829e-05 -3.17659e-06 -2.68155e-05
       rotation -8.51754e-14 1 -1.71159e-13 0.726932
