@@ -29,5 +29,45 @@
 #define ANGLE_PRECISION 0.001
 #define TARGET_PRECISION 0.1
 
+/* device stuff */
+static WbDeviceTag camera; 
+
+#define BUMPERS_NUMBER 2
+#define BUMPER_LEFT 0
+#define BUMPER_RIGHT 1
+static WbDeviceTag bumpers[BUMPERS_NUMBER];
+static const char *bumpers_name[BUMPERS_NUMBER] = {
+  "bumper_left",
+  "bumper_right"
+};
+
+#define DISTANCE_SENSORS_NUMBER 6
+#define DISTANCE_SENSOR_LEFT 0
+#define DISTANCE_SENSOR_FRONT_LEFT 1
+#define DISTANCE_SENSOR_FRONT_RIGHT 2
+#define DISTANCE_SENSOR_DIAG_RIGHT 3
+#define DISTANCE_SENSOR_RIGHT 4
+#define DISTANCE_SENSOR_DIAG_LEFT 5
+static WbDeviceTag distance_sensors[DISTANCE_SENSORS_NUMBER];
+static const char *distance_sensors_name[DISTANCE_SENSORS_NUMBER] = {
+  "dist_left",
+  "dist_front_left",
+  "dist_front_right",
+  "dist_diagright",
+  "dist_right",
+  "dist_diagleft"
+};
+
+#define LEDS_NUMBER 3
+#define LED_ON 0
+#define LED_PLAY 1
+#define LED_STEP 2
+static WbDeviceTag leds[LEDS_NUMBER];
+static const char *leds_name[LEDS_NUMBER] = {
+  "led_on",
+  "led_play",
+  "led_step"
+};
+
 #endif	/* CONSTANTS_H */
 

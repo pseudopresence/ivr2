@@ -1,4 +1,4 @@
-vacuum62.o: vacuum62.cpp \
+vacuum62.o: vacuum62.cpp robot.h \
  /opt/webots/include/controller/c/webots/differential_wheels.h \
  /opt/webots/include/controller/c/webots/types.h \
  /opt/webots/include/controller/c/webots/distance_sensor.h \
@@ -6,4 +6,5 @@ vacuum62.o: vacuum62.cpp \
  /opt/webots/include/controller/c/webots/receiver.h \
  /opt/webots/include/controller/c/webots/robot.h \
  /opt/webots/include/controller/c/webots/touch_sensor.h \
- /opt/webots/include/controller/c/webots/camera.h
+ /opt/webots/include/controller/c/webots/camera.h util.h vec2.h pid.h \
+ navigation.h constants.h

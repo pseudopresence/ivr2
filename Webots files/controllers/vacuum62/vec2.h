@@ -84,8 +84,14 @@ inline Vec2& Vec2::operator*=(double const _s)
   return *this;
 }
 
-Vec2 Vec2::UnitFromDir(double const _dir) { return Vec2(cos(_dir), sin(_dir)); }
+Vec2 Vec2::UnitFromDir(double const _dir) 
+{ 
+    return Vec2(cos(_dir), sin(_dir)); 
+}
 
-Vec2 Vec2::FromDirLen(double const _dir, double const _len ) { return _len * UnitFromDir(_dir); }
+Vec2 Vec2::FromDirLen(double const _dir, double const _len ) 
+{ 
+    return _len * UnitFromDir(_dir); 
+}
 
 #endif // _VEC2_H
