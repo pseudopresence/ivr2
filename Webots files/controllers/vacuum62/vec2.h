@@ -28,7 +28,10 @@ public:
     return sqrt(GetLengthSquared());
   }
   
-  double GetDir() const { return atan2(m_y, m_x); }
+  double GetDir() const 
+  { 
+      return atan2(m_y, m_x); 
+  }
   
   Vec2& operator+=(Vec2 const& _r);
   Vec2& operator-=(Vec2 const& _r);

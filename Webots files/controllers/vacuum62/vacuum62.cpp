@@ -15,7 +15,7 @@
 /* main */
 int main(int argc, char **argv)
 {
-  Robot r(Vec2(0,0),0);
+  Robot r(Vec2(0,0),0, 0);
  
   r.Init();
   r.Run();

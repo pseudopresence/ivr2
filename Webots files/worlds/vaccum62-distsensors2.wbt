@@ -12,9 +12,8 @@ WorldInfo {
   title "LIS-EPFL Blimp"
 }
 Viewpoint {
-  orientation 0.0157264 -0.707244 -0.706794 3.15602
-  position 2.70421 3.48762 1.30294
-  follow "vacu"
+  orientation -0.0106866 0.789909 0.613131 3.13368
+  position -0.00453318 16.1821 -4.16449
 }
 Background {
 }
@@ -3446,7 +3445,7 @@ DEF VACU1 DifferentialWheels {
       }
     }
     DEF CREATE_REAR_WHEEL Solid {
-      translation 0 -0.0305 0.1315
+      translation 0 -0.035 0.1315
       boundingObject Sphere {
         radius 0.01
       }
@@ -3456,7 +3455,7 @@ DEF VACU1 DifferentialWheels {
       }
     }
     DEF CREATE_FRONT_WHEEL Solid {
-      translation 0 -0.035 -0.129
+      translation 0 -0.035 -0.1315
       boundingObject Sphere {
         radius 0.01
       }
@@ -3639,31 +3638,18 @@ DEF VACU1 DifferentialWheels {
       numberOfRays 4
       aperture 0.25
     }
-    DEF CREATE_DIST_SENSOR_FRONT_RIGHT DistanceSensor {
-      translation 0.04 -0.035 -0.15
-      rotation 0.357368 0.862888 0.357368 1.717
-      name "dist_front_right"
+    DEF CREATE_DIST_SENSOR_FRONT DistanceSensor {
+      translation 0 0 -0.15
+      rotation 0 1 0 1.5708
+      name "dist_front"
       lookupTable [
         0 0 0
         3 3 0
       ]
       type "sonar"
-      numberOfRays 4
       aperture 0.25
     }
-    DEF CREATE_DIST_SENSOR_FRONT_LEFT DistanceSensor {
-      translation -0.04 -0.035 -0.15
-      rotation 0.357368 0.862888 0.357368 1.717
-      name "dist_front_left"
-      lookupTable [
-        0 0 0
-        3 3 0
-      ]
-      type "sonar"
-      numberOfRays 4
-      aperture 0.25
-    }
-    DEF CREATE_DIST_SENSOR_LEFT DistanceSensor {
+    DEF CREATE_DIST_SENSOR_DIAGLEFT DistanceSensor {
       translation -0.1 -0.035 -0.13
       rotation 0.377338 0.912818 0.15614 2.418
       name "dist_diagleft"
@@ -3677,7 +3663,7 @@ DEF VACU1 DifferentialWheels {
     }
     DEF CREATE_DIST_SENSOR_LEFT DistanceSensor {
       translation -0.15 -0.035 -0.07
-      rotation 0.382411 0.923992 0 -3.14159
+      rotation 0 0 1 2.3554
       name "dist_left"
       lookupTable [
         0 0 0

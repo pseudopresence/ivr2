@@ -5,6 +5,7 @@
       <in>constants.h</in>
       <in>navigation.h</in>
       <in>pid.h</in>
+      <in>robot.h</in>
       <in>util.h</in>
       <in>vacuum62.cpp</in>
       <in>vec2.h</in>

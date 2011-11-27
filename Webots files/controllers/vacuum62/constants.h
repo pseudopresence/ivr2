@@ -9,8 +9,8 @@
 #define	CONSTANTS_H
 
 /* Misc Stuff */
-#define MAX_SPEED (500) /* Units: mm/s */
-#define NULL_SPEED (0)
+#define MAX_SPEED 500 /* Units: mm/s */
+#define NULL_SPEED 0
 #define HALF_SPEED ((MAX_SPEED)/2.0)
 #define MIN_SPEED (-(MAX_SPEED))
 
@@ -21,13 +21,17 @@
 #define ENCODER_RESOLUTION 507.9188
 
 /* Room Size */
-#define MAX_ROOM_HEIGHT (6 - ROBOT_DIAMETER)
-#define MAX_ROOM_WIDTH (6 - ROBOT_DIAMETER)
+#define WALL_OFFSET 0.2
+#define ORIGINAL_ROOM_SIZE 6
+#define MAX_ROOM_SIZE (ORIGINAL_ROOM_SIZE - 2 * WALL_OFFSET)
+#define NAV_ROOM_SIZE (ORIGINAL_ROOM_SIZE - WALL_OFFSET - ROBOT_RADIUS)
 
 /* Precision constants */
 #define TURN_PRECISION 0.03
 #define ANGLE_PRECISION 0.001
-#define TARGET_PRECISION 0.1
+#define TARGET_PRECISION 0.02
+
+#define TARGET_TIMEOUT 4
 
 /* device stuff */
 static WbDeviceTag camera; 
@@ -41,21 +45,19 @@ static const char *bumpers_name[BUMPERS_NUMBER] = {
   "bumper_right"
 };
 
-#define DISTANCE_SENSORS_NUMBER 6
+#define DISTANCE_SENSORS_NUMBER 5
 #define DISTANCE_SENSOR_LEFT 0
-#define DISTANCE_SENSOR_FRONT_LEFT 1
-#define DISTANCE_SENSOR_FRONT_RIGHT 2
-#define DISTANCE_SENSOR_DIAG_RIGHT 3
-#define DISTANCE_SENSOR_RIGHT 4
-#define DISTANCE_SENSOR_DIAG_LEFT 5
+#define DISTANCE_SENSOR_FRONT 1
+#define DISTANCE_SENSOR_RIGHT 2
+#define DISTANCE_SENSOR_DIAG_LEFT 3
+#define DISTANCE_SENSOR_DIAG_RIGHT 4
 static WbDeviceTag distance_sensors[DISTANCE_SENSORS_NUMBER];
 static const char *distance_sensors_name[DISTANCE_SENSORS_NUMBER] = {
   "dist_left",
-  "dist_front_left",
-  "dist_front_right",
-  "dist_diagright",
+  "dist_front",
   "dist_right",
-  "dist_diagleft"
+  "dist_diagleft",
+  "dist_diagright"
 };
 
 #define LEDS_NUMBER 3

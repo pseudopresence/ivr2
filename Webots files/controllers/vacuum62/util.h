@@ -8,8 +8,17 @@ static double randdouble() {
 
 /* wrap a value into the given range, for example -M_PI to M_PI */
 static double wrap(double _x, double const _min, double const _max ) {
-   while (_x < _min) { _x += (_max - _min); }
-   while (_x > _max) { _x -= (_max - _min); }
+   
+   while (_x < _min) 
+   {
+       _x += (_max - _min); 
+   }
+   
+   while (_x >= _max) 
+   {
+       _x -= (_max - _min); 
+   }
+   
    return _x;
 }
 
@@ -22,6 +31,10 @@ static double clamp(double _x, double const _min, double const _max) {
 
 static double max(double const _a, double const _b) {
    return (_a > _b) ? _a : _b;
+}
+
+static double min(double const _a, double const _b) {
+   return (_a < _b) ? _a : _b;
 }
 
 /* smootherstep interpolation function from http://en.wikipedia.org/wiki/Smoothstep */
