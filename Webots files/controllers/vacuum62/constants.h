@@ -27,11 +27,12 @@
 #define NAV_ROOM_SIZE (ORIGINAL_ROOM_SIZE - WALL_OFFSET - ROBOT_RADIUS)
 
 /* Precision constants */
-#define TURN_PRECISION 0.03
+#define TURN_PRECISION 0.01
 #define ANGLE_PRECISION 0.001
 #define TARGET_PRECISION 0.02
 
-#define TARGET_TIMEOUT 4
+#define TARGET_TIMEOUT 2
+#define DANGER_DISTANCE 0.15
 
 /* device stuff */
 static WbDeviceTag camera; 
