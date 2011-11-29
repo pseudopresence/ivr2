@@ -15,8 +15,20 @@
 #define NAV_TARGET_COUNT 12
 
 enum Direction {
-    LEFT, UP, RIGHT, DOWN
+    UP = 0, LEFT, DOWN, RIGHT
 };
+
+Direction operator++ (Direction& _d, int)
+{
+  _d = (Direction)wrap((int)_d + 1, 0, 3);
+  return _d;
+}
+
+Direction operator-- (Direction& _d, int)
+{
+  _d = (Direction)wrap((int)_d - 1, 0, 3);
+  return _d;
+}
 
 struct NavigationState {
 
@@ -53,11 +65,17 @@ public:
        and returns the index of the target in the direction of movement
      */
     int SetNextTarget(NavigationState& _state) {
-        m_targetIndex = wrap(++m_targetIndex, 1, NAV_TARGET_COUNT + 1);
-        m_targetStartTime = wb_robot_get_time();
+        m_targetIndex = wrap(++m_targetIndex, 1, NAV_TARGET_COUNT);
+        // m_targetStartTime = wb_robot_get_time();
 
         double targetX = 0;
         double targetY = 0;
+        
+        if (m_targetIndex == 1)
+        {          
+          _state.m_dir++;
+          printf("My direction: %d", _state.m_dir);
+        }
 
         //Detect the next target depending on which direction the robot comes from
         switch (_state.m_dir) {
@@ -117,8 +135,8 @@ public:
         _state.m_offset = m_offset;
         _state.m_targetPos = newTargetPos;
 
-        printf("Target index: %d\n", m_targetIndex);
-        printf("Current target: %f %f\n", newTargetPos.m_x, newTargetPos.m_y);
+        // printf("Target index: %d\n", m_targetIndex);
+        // printf("Current target: %f %f\n", newTargetPos.m_x, newTargetPos.m_y);
 
         return m_targetIndex;
     }

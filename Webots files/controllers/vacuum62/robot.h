@@ -10,7 +10,7 @@
 
 #include <time.h>
 #include <math.h>
-#include <vector>
+#include <deque>
 
 #include <webots/differential_wheels.h>
 #include <webots/distance_sensor.h>
@@ -108,7 +108,7 @@ struct Pose {
   }
 
   void Update(double const _turn, double const _distance) {
-    m_dir = wrap(m_dir + _turn, 0, 2 * M_PI);
+    m_dir = wrap(m_dir + _turn, 0.0, 2 * M_PI);
     // TODO do we get a better estimate using the previous direction to update position, or the new one? Or an average?
     m_pos += Vec2::FromDirLen(m_dir, _distance);
 
@@ -122,23 +122,35 @@ struct Pose {
 class Robot {
 private:
   Pose m_pose;
-  NavigationState m_navState;
   Behaviour m_behaviour;
+  NavigationState m_navState;
   Navigation m_nav;
+  std::deque<NavigationState> m_targetQueue;
+  double m_targetStartTime;
 public:
 
   Robot(Vec2 const _pos, double _offset, double _dir) :
   m_pose(_pos, _dir),
   m_navState(UP, _offset, _pos),
   m_behaviour(REST),
-  m_nav()
-  {
+  m_nav(),
+  m_targetQueue(),
+  m_targetStartTime(0) {
   }
 
   void Init() {
     wb_robot_init();
     wb_differential_wheels_enable_encoders(get_time_step());
     wb_differential_wheels_set_encoders(0.0, 0.0);
+
+    NavigationState navState(m_navState);
+    
+    while (navState.m_offset < MAX_ROOM_SIZE / 2) {
+      m_nav.SetNextTarget(navState);
+      m_targetQueue.push_back(navState);
+    }
+    
+    printf("Queue size: %d\n", m_targetQueue.size());
   }
 
   void Shutdown() {
@@ -252,7 +264,7 @@ public:
     wb_differential_wheels_set_speed(-1.05 * neg * HALF_SPEED, neg * HALF_SPEED);
 
     double const start = m_pose.m_dir;
-    double const end = wrap(start + _angle, 0, 2 * M_PI);
+    double const end = wrap(start + _angle, 0.0, 2 * M_PI);
     double cur = start;
 
     do {
@@ -260,7 +272,7 @@ public:
       cur = m_pose.m_dir;
       //printf("current:%f end:%f\n", cur, end);
     } while (fabs(wrap(end - cur, -M_PI, M_PI)) > TURN_PRECISION);
-    
+
     printf("current:%f end:%f delta:%f\n", cur, end, fabs(wrap(end - cur, -M_PI, M_PI)));
 
     Stop();
@@ -282,24 +294,24 @@ public:
 
     double const heading = (targetPos - curPos).GetDir();
     //printf("Dif: %f, %f\n", (targetPos - curPos).m_x, (targetPos - curPos).m_y);
-    return wrap(heading, 0, 2 * M_PI);
+    return wrap(heading, 0.0, 2 * M_PI);
   }
 
   double GetEstimatedHeading() const {
     return m_pose.m_dir;
   }
 
-  bool HasReachedTarget(int targetIndex) {
+  bool HasReachedTarget() {
     bool result = false;
 
     Vec2 const curPos = m_pose.m_pos;
     Vec2 const targetPos = m_navState.m_targetPos;
-    Vec2 const deltaPos = targetPos - curPos;
 
-    double const dd = deltaPos.GetLengthSquared();
+    double const dd = (targetPos - curPos).GetLengthSquared();
 
     if (dd < TARGET_PRECISION) {
-      if (targetIndex == NAV_TARGET_COUNT) {
+      if (m_targetQueue.front().m_dir != m_navState.m_dir) {
+        //If it is the final target in the current direction, correct the position estimate
         return CorrectOdometry();
       } else {
         result = true;
@@ -310,22 +322,23 @@ public:
   }
 
   bool IgnoreObstacle() {
-    bool result = false;
+    
+    printf("Direction: %d\n", m_navState.m_dir);
 
-    if (((m_navState.m_targetPos.m_x <= DANGER_DISTANCE) || (MAX_ROOM_SIZE - m_navState.m_targetPos.m_x <= DANGER_DISTANCE)) &&
-            ((m_navState.m_targetPos.m_y <= DANGER_DISTANCE) || (MAX_ROOM_SIZE - m_navState.m_targetPos.m_y <= DANGER_DISTANCE))) {
-      result = true;
+    if (((m_navState.m_targetPos.m_x <= DANGER_DISTANCE) && (m_navState.m_dir == DOWN))
+            || ((MAX_ROOM_SIZE - m_navState.m_targetPos.m_x <= DANGER_DISTANCE) && (m_navState.m_dir == UP))
+            || ((m_navState.m_targetPos.m_y <= DANGER_DISTANCE) && (m_navState.m_dir == RIGHT))
+            || ((MAX_ROOM_SIZE - m_navState.m_targetPos.m_y <= DANGER_DISTANCE) && (m_navState.m_dir == LEFT))) {
+      return true;
+    } else {
+      return false;
     }
-
-    return result;
   }
 
   void Run() {
     m_behaviour = SWEEPING;
 
     //Robots initial movement is upwards towards the first target position
-    int targetIndex = m_nav.SetNextTarget(m_navState);
-
     init_devices();
     camera = wb_robot_get_device("camera");
     wb_camera_enable(camera, get_time_step());
@@ -337,42 +350,29 @@ public:
     PassiveWait(0.5);
 
     while (m_behaviour != REST) {
-      if (HasReachedTarget(targetIndex) || wb_robot_get_time() - m_nav.GetTargetStartTime() > TARGET_TIMEOUT) {
+      if (HasReachedTarget() /*|| wb_robot_get_time() - m_targetStartTime > TARGET_TIMEOUT*/) {
         printf("Target reached\n");
 
         if (m_behaviour != HOMING) {
 
-          if (targetIndex == NAV_TARGET_COUNT) {
-            //If reached the final target in the current direction, switch to the next direction on the spiral
-            switch (m_navState.m_dir) {
-              case UP:
-                m_navState.m_dir = LEFT;
-                break;
-              case LEFT:
-                m_navState.m_dir = DOWN;
-                break;
-              case DOWN:
-                m_navState.m_dir = RIGHT;
-                break;
-              case RIGHT:
-                m_navState.m_dir = UP;
-                break;
-            }
-          }
+          m_targetQueue.pop_front();
 
-          targetIndex = m_nav.SetNextTarget(m_navState);
-
-          if (m_navState.m_offset >= MAX_ROOM_SIZE / 2) {
+          if (m_targetQueue.empty()) {
             //If the robot is already covering the next target (spiral finished), switch to homing behaviour
             printf("Homing\n");
             m_behaviour = HOMING;
 
             //TODO: Put the homing logic and remove the following line
             m_behaviour = REST;
-          } else if (targetIndex == 1) {
+          } else /* if (targetIndex == 1) */ {
             //If ready to start in the new direction on the spiral, turn in that direction
             printf("Turning\n");
+
+            m_navState = m_targetQueue.front();
             TurnToHeading(GetTargetHeading());
+            m_targetStartTime = wb_robot_get_time();
+
+            printf("Current target: %f %f\n", m_navState.m_targetPos.m_x, m_navState.m_targetPos.m_y);
           }
         } else {
           //If reached the homing target, put the robot at rest
@@ -383,15 +383,37 @@ public:
       if (obstacle_detected() && !IgnoreObstacle()) {
         printf("Obstacle detected\n");
         //Backward(0.5);
-        Turn(M_PI * 0.5);
-        Forward(1.0);
-        Turn(M_PI * -0.5);
-        Forward(1.0);
-        
-        while (m_navState.m_targetPos.m_x < m_pose.m_pos.m_x)
-        {
-          targetIndex = m_nav.SetNextTarget(m_navState);
-        }
+        // Turn(M_PI * 0.5);
+        // Forward(1.0);
+        // Turn(M_PI * -0.5);
+        // Forward(1.0);
+
+        // while (m_navState.m_targetPos.m_x < m_pose.m_pos.m_x)
+        //{
+        //  targetIndex = m_nav.SetNextTarget(m_navState);
+        //}
+        m_targetQueue.pop_front();
+        m_targetQueue.pop_front();
+
+        NavigationState avoidState1 = m_navState;
+        avoidState1.m_targetPos = Vec2(0, 0.6).RotatedBy(m_pose.m_dir) + m_pose.m_pos;
+        avoidState1.m_dir++;
+
+        NavigationState avoidState2 = m_navState;
+        avoidState2.m_targetPos = Vec2(0.6, 0).RotatedBy(m_pose.m_dir) + avoidState1.m_targetPos;
+
+        NavigationState avoidState3 = m_navState;
+        avoidState3.m_targetPos = Vec2(0.6, 0).RotatedBy(m_pose.m_dir) + avoidState2.m_targetPos;
+
+        m_targetQueue.front().m_dir--;
+
+        m_targetQueue.push_front(avoidState3);
+        m_targetQueue.push_front(avoidState2);
+        m_targetQueue.push_front(avoidState1);
+
+        m_navState = m_targetQueue.front();
+        TurnToHeading(GetTargetHeading());
+        m_targetStartTime = wb_robot_get_time();
       } else {
         int avoid_sensors[] = {
           DISTANCE_SENSOR_FRONT,

@@ -20,6 +20,19 @@ static double wrap(double _x, double const _min, double const _max) {
     return _x;
 }
 
+static int wrap(int _x, int const _min, int const _max) {
+
+    while (_x < _min) {
+        _x += (_max - _min + 1);
+    }
+
+    while (_x > _max) {
+        _x -= (_max - _min + 1);
+    }
+
+    return _x;
+}
+
 /* clamp a value to the given range, for example 0 to 1 */
 static double clamp(double _x, double const _min, double const _max) {
     if (_x < _min) {
