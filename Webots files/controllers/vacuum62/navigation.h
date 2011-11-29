@@ -74,7 +74,6 @@ public:
         if (m_targetIndex == 1)
         {          
           _state.m_dir++;
-          printf("My direction: %d", _state.m_dir);
         }
 
         //Detect the next target depending on which direction the robot comes from
