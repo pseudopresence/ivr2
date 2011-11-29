@@ -38,7 +38,7 @@ static double speedFromControlParam(double const _param) {
     if (_param < 0) {
         return 1;
     } else {
-        return 1 - 2 * _param;
+        return 1 - 3 * _param;
     }
 }
 
@@ -103,7 +103,6 @@ struct Pose {
     }
 
     void Update(double const _turn, double const _distance) {
-        //m_dir = ceilf((m_dir + _turn) / ANGLE_PRECISION) * ANGLE_PRECISION;
         m_dir = wrap(m_dir + _turn, 0, 2 * M_PI);
         // TODO do we get a better estimate using the previous direction to update position, or the new one? Or an average?
         m_pos += Vec2::FromDirLen(m_dir, _distance);
@@ -147,7 +146,7 @@ public:
         double dr = encr / ENCODER_RESOLUTION * WHEEL_RADIUS; // distance covered by right wheel in meter
 
         double const TURN_HACK_FACTOR = 0.97;
-        double const DIST_HACK_FACTOR = 1; //0.97;
+        double const DIST_HACK_FACTOR = 1;//1.20;
         double turn = TURN_HACK_FACTOR * (dr - dl) / AXLE_LENGTH; // delta orientation in radian
         double distance = DIST_HACK_FACTOR * (dr + dl) / 2;
 
@@ -245,7 +244,7 @@ public:
 
         double neg = (_angle < 0.0) ? -1.0 : 1.0;
 
-        wb_differential_wheels_set_speed(-neg * HALF_SPEED, neg * HALF_SPEED);
+        wb_differential_wheels_set_speed(- 1.05 * neg * HALF_SPEED, neg * HALF_SPEED);
 
         double const start = m_pose.m_dir;
         double const end = wrap(start + _angle, 0, 2 * M_PI);
@@ -292,10 +291,7 @@ public:
         Vec2 const targetPos = m_navState.m_targetPos;
         Vec2 const deltaPos = targetPos - curPos;
 
-        double const dx = deltaPos.m_x;
-        double const dy = deltaPos.m_y;
-        double const dd = (dx * dx) + (dy * dy);
-        // printf("Distance^2 to target: %03.3f\n", dd);
+        double const dd = deltaPos.GetLengthSquared();
 
         if (dd < TARGET_PRECISION) {
             if (targetIndex == NAV_TARGET_COUNT) {
@@ -333,7 +329,7 @@ public:
             } else if (is_there_a_collision_at_right()) {
                 printf("Right collision detected\n");
                 Backward(0.1);
-                Turn(M_PI * -0.25);
+                Turn(M_PI * 0.25);
                 Forward(0.1);
             } else {
                 int avoid_sensors[] = {
@@ -359,15 +355,14 @@ public:
                 double const l_avoid = 0; //1.0 * l_max;
                 double const l_goal = -1 * wrap(GetTargetHeading() - GetEstimatedHeading(), -M_PI, M_PI);
 
-                //printf("Target: %f Estimated: %f Correction: %f\n", GetTargetHeading() * 180/M_PI, GetEstimatedHeading() * 180/M_PI, wrap(GetTargetHeading() - GetEstimatedHeading(), -M_PI, M_PI) *180/M_PI);
+                printf("Target: %f Estimated: %f Correction: %f\n", GetTargetHeading() * 180/M_PI, GetEstimatedHeading() * 180/M_PI, wrap(GetTargetHeading() - GetEstimatedHeading(), -M_PI, M_PI) *180/M_PI);
 
                 Vec2 const m_avoid = speedsFromControlParam(l_avoid);
                 Vec2 const m_goal = speedsFromControlParam(l_goal);
 
                 Vec2 const result = l_avoid * m_avoid + (1 - l_avoid) * m_goal;
 
-                // TODO: 'normalise' this so that at least one component is at max speed
-
+                // TODO: 'normalise' this so that at least one component is at max speed              
                 wb_differential_wheels_set_speed(MAX_SPEED * clamp(result.m_x, -1, 1), MAX_SPEED * clamp(result.m_y, -1, 1));
 
                 if (HasReachedTarget(targetIndex) || wb_robot_get_time() - m_nav.GetTargetStartTime() > TARGET_TIMEOUT) {
@@ -396,10 +391,12 @@ public:
                         targetIndex = m_nav.SetNextTarget(m_navState);
 
                         if (m_navState.m_offset >= MAX_ROOM_SIZE / 2) {
-                            //If reached the middle of the room, where no more spiral lines are possible, start homing
+                            //If the robot is already covering the next target (spiral finished), switch to homing behaviour
+                            printf("Homing\n");
                             m_behaviour = HOMING;
 
-                            //TODO: Put the homing logic
+                            //TODO: Put the homing logic and remove the following line
+                            m_behaviour = REST;
                         } else if (targetIndex == 1) {
                             //If ready to start in the new direction on the spiral, turn in that direction
                             printf("Turning\n");

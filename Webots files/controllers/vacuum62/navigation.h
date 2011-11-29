@@ -98,6 +98,7 @@ public:
                 targetX = m_offset;
 
                 if (m_targetIndex == NAV_TARGET_COUNT) {
+                    //TODO: Replace this to ROBOT_RADIUS, in order to get a more thorough coverage
                     m_offset += ROBOT_DIAMETER;
                 }
 
