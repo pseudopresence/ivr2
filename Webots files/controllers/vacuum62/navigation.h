@@ -8,6 +8,7 @@
 #ifndef NAVIGATION_H
 #define	NAVIGATION_H
 
+#include "util.h"
 #include "vec2.h"
 #include "constants.h"
 
@@ -18,13 +19,13 @@ enum Direction {
     UP = 0, LEFT, DOWN, RIGHT
 };
 
-Direction operator++ (Direction& _d, int)
+inline Direction operator++ (Direction& _d, int)
 {
   _d = (Direction)wrap((int)_d + 1, 0, 3);
   return _d;
 }
 
-Direction operator-- (Direction& _d, int)
+inline Direction operator-- (Direction& _d, int)
 {
   _d = (Direction)wrap((int)_d - 1, 0, 3);
   return _d;

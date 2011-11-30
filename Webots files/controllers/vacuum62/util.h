@@ -1,6 +1,9 @@
 #ifndef _UTIL_H
 #define _UTIL_H
 
+#include <math.h>
+#include <stdlib.h>
+
 /* random double [0.0 - 1.0] */
 static double randdouble() {
     return rand() / ((double) RAND_MAX + 1);
