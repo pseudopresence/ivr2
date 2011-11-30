@@ -16,6 +16,10 @@ enum Direction {
     UP = 0, LEFT, DOWN, RIGHT
 };
 
+enum TargetType {
+    NORMAL = 0, AVOIDANCE, HOME
+};
+
 inline Direction operator++ (Direction& _d, int)
 {
   _d = (Direction)wrap((int)_d + 1, 0, 3);
@@ -34,6 +38,7 @@ struct NavigationState {
     Direction m_dir;
     double m_offset;
     Vec2 m_targetPos;
+    TargetType m_targetType;
 };
 
 class Navigation {

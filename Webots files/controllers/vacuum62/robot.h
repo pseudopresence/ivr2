@@ -37,6 +37,7 @@ struct Pose {
 
 class Robot {
 private:
+    Pose m_home;
     Pose m_pose;
     Behaviour m_behaviour;
     NavigationState m_navState;
@@ -71,7 +72,7 @@ public:
     double GetEstimatedHeading() const;
 
     bool HasReachedTarget();
-    bool ShouldIgnoreObstacle();
+    bool IsWallExpected();
 
     void Run();
 };

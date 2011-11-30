@@ -12,8 +12,8 @@ WorldInfo {
   title "LIS-EPFL Blimp"
 }
 Viewpoint {
-  orientation 0.0199329 0.976601 0.214134 3.37926
-  position -2.38018 9.01844 -14.7832
+  orientation 0.090118 0.922406 0.375562 3.60939
+  position -2.91428 8.92899 -6.98095
 }
 Background {
 }
@@ -623,8 +623,7 @@ DEF CHAIR Solid {
   }
 }
 DEF TABLE Solid {
-  translation 2.8552 0.0046076 0.174395
-  rotation -4.77446e-11 1 2.78418e-11 -0.28141
+  translation 2.68026 -0.014 0.606854
   children [
     DEF TABLEELEMENT1 Transform {
       translation 0 0.615 0
@@ -3615,7 +3614,7 @@ DEF VACU1 DifferentialWheels {
       ]
     }
     DEF CREATE_DIST_SENSOR_RIGHT DistanceSensor {
-      translation 0.15 -0.035 -0.07
+      translation 0.15 -0.035 0
       rotation 0 0 1 0.785402
       name "dist_right"
       lookupTable [
@@ -3626,16 +3625,37 @@ DEF VACU1 DifferentialWheels {
       numberOfRays 4
       aperture 0.25
     }
-    DEF CREATE_DIST_SENSOR_DIAGRIGHT DistanceSensor {
-      translation 0.1 -0.035 -0.13
-      rotation 0.281235 0.678567 0.678567 1.096
-      name "dist_diagright"
+    DEF CREATE_DIST_SENSOR_FRONT_RIGHT_3 DistanceSensor {
+      translation 0.1675 -0.03 0
+      rotation 0 1 0 1.5708
+      name "dist_front_right_3"
       lookupTable [
         0 0 0
         3 3 0
       ]
       type "sonar"
-      numberOfRays 4
+      aperture 0.25
+    }
+    DEF CREATE_DIST_SENSOR_FRONT_RIGHT_2 DistanceSensor {
+      translation 0.1125 -0.03 -0.13
+      rotation 0 1 0 1.5708
+      name "dist_front_right_2"
+      lookupTable [
+        0 0 0
+        3 3 0
+      ]
+      type "sonar"
+      aperture 0.25
+    }
+    DEF CREATE_DIST_SENSOR_FRONT_RIGHT_1 DistanceSensor {
+      translation 0.0565 -0.03 -0.15
+      rotation 0 1 0 1.5708
+      name "dist_front_right_1"
+      lookupTable [
+        0 0 0
+        3 3 0
+      ]
+      type "sonar"
       aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_FRONT DistanceSensor {
@@ -3649,20 +3669,41 @@ DEF VACU1 DifferentialWheels {
       type "sonar"
       aperture 0.25
     }
-    DEF CREATE_DIST_SENSOR_DIAGLEFT DistanceSensor {
-      translation -0.1 -0.035 -0.13
-      rotation 0.377338 0.912818 0.15614 2.418
-      name "dist_diagleft"
+    DEF CREATE_DIST_SENSOR_FRONT_LEFT_1 DistanceSensor {
+      translation -0.0565 -0.03 -0.15
+      rotation 0 1 0 1.5708
+      name "dist_front_left_1"
       lookupTable [
         0 0 0
         3 3 0
       ]
       type "sonar"
-      numberOfRays 4
+      aperture 0.25
+    }
+    DEF CREATE_DIST_SENSOR_FRONT_LEFT_2 DistanceSensor {
+      translation -0.1125 -0.03 -0.13
+      rotation 0 1 0 1.5708
+      name "dist_front_left_2"
+      lookupTable [
+        0 0 0
+        3 3 0
+      ]
+      type "sonar"
+      aperture 0.25
+    }
+    DEF CREATE_DIST_SENSOR_FRONT_LEFT_3 DistanceSensor {
+      translation -0.1675 -0.03 0
+      rotation 0 1 0 1.5708
+      name "dist_front_left_3"
+      lookupTable [
+        0 0 0
+        3 3 0
+      ]
+      type "sonar"
       aperture 0.25
     }
     DEF CREATE_DIST_SENSOR_LEFT DistanceSensor {
-      translation -0.15 -0.035 -0.07
+      translation -0.15 -0.035 0
       rotation 0 0 1 2.3554
       name "dist_left"
       lookupTable [
