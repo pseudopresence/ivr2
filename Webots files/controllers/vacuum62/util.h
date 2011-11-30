@@ -1,6 +1,9 @@
 #ifndef _UTIL_H
 #define _UTIL_H
 
+#include <math.h>
+#include <stdlib.h>
+
 /* random double [0.0 - 1.0] */
 static double randdouble() {
     return rand() / ((double) RAND_MAX + 1);
@@ -20,6 +23,7 @@ static double wrap(double _x, double const _min, double const _max) {
     return _x;
 }
 
+/* wrap an integer value as above */
 static int wrap(int _x, int const _min, int const _max) {
 
     while (_x < _min) {
@@ -53,7 +57,7 @@ static double min(double const _a, double const _b) {
 }
 
 /* smootherstep interpolation function from http://en.wikipedia.org/wiki/Smoothstep */
-static float smootherstep(float edge0, float edge1, float x) {
+static double smootherstep(double edge0, double edge1, double x) {
     // Scale, and clamp x to 0..1 range
     x = clamp((x - edge0) / (edge1 - edge0), 0, 1);
     // Evaluate polynomial

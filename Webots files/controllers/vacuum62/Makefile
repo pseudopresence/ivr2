@@ -43,4 +43,7 @@ CXX += -v
 space :=
 space +=
 WEBOTS_HOME_PATH=$(subst $(space),\ ,$(strip $(subst \,/,$(WEBOTS_HOME))))
+
+CPP_SOURCES = pid.cpp navigation.cpp robot.cpp vacuum62.cpp
+
 include $(WEBOTS_HOME_PATH)/resources/projects/default/controllers/Makefile.include
