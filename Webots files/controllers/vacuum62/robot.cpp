@@ -6,6 +6,30 @@
 
 #include <stdio.h>
 
+/* device stuff */
+static WbDeviceTag camera;
+
+static WbDeviceTag bumpers[BUMPERS_NUMBER];
+static const char *bumpers_name[BUMPERS_NUMBER] = {
+  "bumper_left",
+  "bumper_right"
+};
+
+static WbDeviceTag distance_sensors[DISTANCE_SENSORS_NUMBER];
+static const char *distance_sensors_name[DISTANCE_SENSORS_NUMBER] = {
+  "dist_left",
+  "dist_front",
+  "dist_right",
+  "dist_diagleft",
+  "dist_diagright"
+};
+
+static WbDeviceTag leds[LEDS_NUMBER];
+static const char *leds_name[LEDS_NUMBER] = {
+  "led_on",
+  "led_play",
+  "led_step"
+};
 
 /* helper functions */
 static double forceFromDist(double const _dist) {
@@ -58,7 +82,7 @@ static bool is_there_a_collision_at_right() {
     return (wb_touch_sensor_get_value(bumpers[BUMPER_RIGHT]) != 0.0);
 }
 
-static bool obstacle_detected() {
+static bool was_obstacle_detected() {
     return (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT]) < DANGER_DISTANCE);
 }
 
@@ -201,6 +225,7 @@ void Robot::Stop() {
   wb_differential_wheels_set_speed(-NULL_SPEED, -NULL_SPEED);
 }
 
+/* Perform an on-the-spot turn by a given angle */
 void Robot::Turn(double _angle) {
   Stop();
   Step();
@@ -225,6 +250,7 @@ void Robot::Turn(double _angle) {
   Step();
 }
 
+/* Perform an on-the-spot turn to a given heading */
 void Robot::TurnToHeading(double const _heading) {
   double delta = wrap(_heading - m_pose.m_dir, -M_PI, M_PI);
   printf("Turning to heading: %f\n", delta * 180 / M_PI);
@@ -267,7 +293,8 @@ bool Robot::HasReachedTarget() {
   return result;
 }
 
-bool Robot::IgnoreObstacle() {
+/* Returns true if we are expecting to see the wall */
+bool Robot::ShouldIgnoreObstacle() {
   Vec2 const targetPos = m_navState.m_targetPos;
 
   if (((targetPos.m_x <= DANGER_DISTANCE) && (m_navState.m_dir == DOWN))
@@ -331,7 +358,7 @@ void Robot::Run() {
       }
     }
 
-    if (obstacle_detected() && !IgnoreObstacle()) {
+    if (was_obstacle_detected() && !ShouldIgnoreObstacle()) {
       printf("Obstacle detected\n");
 
       //TODO: Make dynamic

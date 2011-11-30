@@ -79,7 +79,7 @@ public:
 
     bool HasReachedTarget();
 
-    bool IgnoreObstacle();
+    bool ShouldIgnoreObstacle();
 
     void Run();
 };

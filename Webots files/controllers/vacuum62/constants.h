@@ -24,7 +24,10 @@
 #define WALL_OFFSET 0.2
 #define ORIGINAL_ROOM_SIZE 6
 #define MAX_ROOM_SIZE (ORIGINAL_ROOM_SIZE - 2 * WALL_OFFSET)
+
 #define NAV_ROOM_SIZE (ORIGINAL_ROOM_SIZE - WALL_OFFSET - ROBOT_RADIUS)
+//Number of targets in one direction of movement
+#define NAV_TARGET_COUNT 12
 
 /* Precision constants */
 #define TURN_PRECISION 0.03
@@ -34,17 +37,9 @@
 #define TARGET_TIMEOUT 3
 #define DANGER_DISTANCE 0.15
 
-/* device stuff */
-static WbDeviceTag camera; 
-
 #define BUMPERS_NUMBER 2
 #define BUMPER_LEFT 0
 #define BUMPER_RIGHT 1
-static WbDeviceTag bumpers[BUMPERS_NUMBER];
-static const char *bumpers_name[BUMPERS_NUMBER] = {
-  "bumper_left",
-  "bumper_right"
-};
 
 #define DISTANCE_SENSORS_NUMBER 5
 #define DISTANCE_SENSOR_LEFT 0
@@ -52,25 +47,11 @@ static const char *bumpers_name[BUMPERS_NUMBER] = {
 #define DISTANCE_SENSOR_RIGHT 2
 #define DISTANCE_SENSOR_DIAG_LEFT 3
 #define DISTANCE_SENSOR_DIAG_RIGHT 4
-static WbDeviceTag distance_sensors[DISTANCE_SENSORS_NUMBER];
-static const char *distance_sensors_name[DISTANCE_SENSORS_NUMBER] = {
-  "dist_left",
-  "dist_front",
-  "dist_right",
-  "dist_diagleft",
-  "dist_diagright"
-};
 
 #define LEDS_NUMBER 3
 #define LED_ON 0
 #define LED_PLAY 1
 #define LED_STEP 2
-static WbDeviceTag leds[LEDS_NUMBER];
-static const char *leds_name[LEDS_NUMBER] = {
-  "led_on",
-  "led_play",
-  "led_step"
-};
 
 #endif	/* CONSTANTS_H */
 

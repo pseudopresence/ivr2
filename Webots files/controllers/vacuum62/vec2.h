@@ -3,6 +3,7 @@
 
 #include <math.h>
 
+/* Simple 2D vector type */
 class Vec2
 {
 public:
