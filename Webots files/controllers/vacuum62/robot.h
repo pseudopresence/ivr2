@@ -48,37 +48,29 @@ public:
     Robot(Vec2 const _pos, double _offset, double _dir);
 
     void Init();
-
     void Shutdown();
 
     void UpdateOdometry();
-
     bool CorrectOdometry();
 
     void Step();
 
-    void PassiveWait(double _sec);
-
-    void Forward(double _dist);
-
-    void Forward();
-
-    void Backward(double _dist);
-
-    void Backward();
-
+    /* Non-blocking movement commands */
     void Stop();
-
+    void Forward();
+    void Backward();
+    
+    /* Blocking movement commands */
+    void PassiveWait(double _sec);
+    void Forward(double _dist);
+    void Backward(double _dist);
     void Turn(double _angle);
-
     void TurnToHeading(double const _heading);
 
     double GetTargetHeading() const;
-
     double GetEstimatedHeading() const;
 
     bool HasReachedTarget();
-
     bool ShouldIgnoreObstacle();
 
     void Run();

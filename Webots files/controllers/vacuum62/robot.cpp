@@ -112,7 +112,14 @@ void Robot::Init() {
   wb_robot_init();
   wb_differential_wheels_enable_encoders(get_time_step());
   wb_differential_wheels_set_encoders(0.0, 0.0);
+  
+  init_devices();
+  //camera = wb_robot_get_device("camera");
+  //wb_camera_enable(camera, get_time_step());
+  //wb_led_set(leds[LED_ON], true);
+  srand(time(NULL));
 
+  /* Generate target path */
   NavigationState navState(m_navState);
 
   while (navState.m_offset < MAX_ROOM_SIZE / 2) {
@@ -193,6 +200,18 @@ void Robot::Step() {
   UpdateOdometry();
 }
 
+void Robot::Stop() {
+  wb_differential_wheels_set_speed(-NULL_SPEED, -NULL_SPEED);
+}
+
+void Robot::Forward() {
+  wb_differential_wheels_set_speed(MAX_SPEED, MAX_SPEED);
+}
+
+void Robot::Backward() {
+  wb_differential_wheels_set_speed(-HALF_SPEED, -HALF_SPEED);
+}
+
 void Robot::PassiveWait(double _sec) {
   double start_time = wb_robot_get_time();
 
@@ -207,22 +226,10 @@ void Robot::Forward(double _dist /* distance in meters */) {
   Stop();
 }
 
-void Robot::Forward() {
-  wb_differential_wheels_set_speed(MAX_SPEED, MAX_SPEED);
-}
-
 void Robot::Backward(double _dist /* distance in meters */) {
   Backward();
   PassiveWait(1000 * _dist / MAX_SPEED);
   Stop();
-}
-
-void Robot::Backward() {
-  wb_differential_wheels_set_speed(-HALF_SPEED, -HALF_SPEED);
-}
-
-void Robot::Stop() {
-  wb_differential_wheels_set_speed(-NULL_SPEED, -NULL_SPEED);
 }
 
 /* Perform an on-the-spot turn by a given angle */
@@ -310,17 +317,11 @@ bool Robot::ShouldIgnoreObstacle() {
 void Robot::Run() {
   m_behaviour = SWEEPING;
 
-  init_devices();
-  //camera = wb_robot_get_device("camera");
-  //wb_camera_enable(camera, get_time_step());
-
-  srand(time(NULL));
-
-  //wb_led_set(leds[LED_ON], true);
-
   PassiveWait(0.5);
 
   while (m_behaviour != REST) {
+    
+    /* Navigation logic */
     if (HasReachedTarget() /*|| wb_robot_get_time() - m_targetStartTime > TARGET_TIMEOUT*/) {
       printf("Target reached\n");
 
@@ -358,6 +359,7 @@ void Robot::Run() {
       }
     }
 
+    /* Obstacle avoidance logic */
     if (was_obstacle_detected() && !ShouldIgnoreObstacle()) {
       printf("Obstacle detected\n");
 
@@ -387,6 +389,7 @@ void Robot::Run() {
 
       m_targetStartTime = wb_robot_get_time();
     } else {
+      /* Control logic */
       int avoid_sensors[] = {
         DISTANCE_SENSOR_FRONT,
         DISTANCE_SENSOR_DIAG_LEFT,
@@ -417,7 +420,7 @@ void Robot::Run() {
 
       Vec2 const result = l_avoid * m_avoid + (1 - l_avoid) * m_goal;
 
-      // TODO: 'normalise' this so that at least one component is at max speed              
+      // TODO: 'normalise' this so that at least one component is at max speed?
       wb_differential_wheels_set_speed(MAX_SPEED * clamp(result.m_x, -1, 1), MAX_SPEED * clamp(result.m_y, -1, 1));
     }
 
