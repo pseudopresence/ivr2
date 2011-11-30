@@ -363,10 +363,13 @@ void Robot::Run() {
     if (was_obstacle_detected() && !ShouldIgnoreObstacle()) {
       printf("Obstacle detected\n");
 
+      /* If an obstacle is detected, we discard the next few target positions,
+       and instead generate new ones that move around the obstacle. */
+      
       //TODO: Make dynamic
       m_targetQueue.pop_front();
       m_targetQueue.pop_front();
-
+      
       NavigationState avoidState1 = m_navState;
       avoidState1.m_targetPos = Vec2(0, 0.6).RotatedBy(m_pose.m_dir) + m_pose.m_pos;
       avoidState1.m_dir++;
