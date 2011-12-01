@@ -12,6 +12,8 @@
 #include "vec2.h"
 #include "constants.h"
 
+#include <stdio.h>
+
 enum Direction {
     UP = 0, LEFT, DOWN, RIGHT
 };
@@ -43,7 +45,9 @@ struct NavigationState {
 
 class Navigation {
 private:
+    double m_offsetWidth;
     double m_offset;
+    int m_targetCount;
     int m_targetIndex;
 
 public:
@@ -53,6 +57,7 @@ public:
        and returns the index of the target in the direction of movement
      */
     int SetNextTarget(NavigationState& _state);
+    Direction GetDirectionByAngle(double angle);
 };
 
 #endif	/* NAVIGATION_H */

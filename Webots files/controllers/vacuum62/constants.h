@@ -39,6 +39,11 @@
 #define DANGER_DISTANCE 0.15
 #define OBSTACLE_SIZE 0.8 //estimated min obstacle size that takes into account distance between chair legs
 
+/* Intervals between sensors */
+#define FRONT_SENSOR_INTERVAL_X 0.1675
+#define FRONT_SENSOR_INTERVAL_Y 0.15
+    
+/* Sensor constants */
 #define BUMPERS_NUMBER 2
 #define BUMPER_LEFT 0
 #define BUMPER_RIGHT 1

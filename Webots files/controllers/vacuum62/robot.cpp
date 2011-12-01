@@ -166,8 +166,7 @@ void Robot::Init() {
     /* Generate target path */
     NavigationState navState(m_navState);
 
-    while (navState.m_offset < MAX_ROOM_SIZE / 2) {
-        m_nav.SetNextTarget(navState);
+    while ((navState.m_offset < MAX_ROOM_SIZE / 2) && (m_nav.SetNextTarget(navState) > 0)) {
         m_targetQueue.push_back(navState);
     }
 
@@ -193,20 +192,17 @@ void Robot::UpdateOdometry() {
     wb_differential_wheels_set_encoders(0.0, 0.0);
 }
 
-double direction() {
+bool Robot::CorrectOdometry() {
     double const distFront = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT]);
     double const distFrontLeft = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_LEFT_3]);
 
-    double SENSOR_INTERVAL_X = ROBOT_RADIUS;
-    double SENSOR_INTERVAL_Y = 0.15;
+    //Using the left front and front sensor readings, 
+    //this calculates the angle under which the robot is facing the wall
+    double const dirOffset = atan2(distFrontLeft - distFront - FRONT_SENSOR_INTERVAL_Y, FRONT_SENSOR_INTERVAL_X);
+    double const dirError = wrap(dirOffset + M_PI / 2 * (int) m_navState.m_dir, 0.0, 2 * M_PI) - m_pose.m_dir;
 
-    double const delta = distFrontLeft - distFront - SENSOR_INTERVAL_Y;
-
-    return atan2(delta, SENSOR_INTERVAL_X);
-}
-
-bool Robot::CorrectOdometry() {
-    double const distFront = wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT]);
+    //Correct robot's orientation estimate
+    m_pose.Update(wrap(dirError, -M_PI, M_PI), 0);
 
     double distExpected = NAV_ROOM_SIZE;
     double targetOffset = 0;
@@ -231,12 +227,6 @@ bool Robot::CorrectOdometry() {
     }
 
     double const distError = distExpected - distFront;
-
-    printf("Measured distance: %f\n", distFront);
-    printf("Measured direction: %f [%f]\n", direction(), m_pose.m_dir);
-    printf("Measured correction: %f\n", wrap(wrap(direction() + M_PI / 2 * (int) m_navState.m_dir, 0.0, 2 * M_PI) - m_pose.m_dir, -M_PI, M_PI));
-
-    m_pose.Update(wrap(wrap(direction() + M_PI / 2 * (int) m_navState.m_dir, 0.0, 2 * M_PI) - m_pose.m_dir, -M_PI, M_PI), 0);
 
     if (distFront > WALL_OFFSET - ROBOT_RADIUS + m_navState.m_offset + 2 * TARGET_PRECISION) {
         if (fabs(distError) > TARGET_PRECISION) {
@@ -406,6 +396,11 @@ void Robot::Run() {
                     printf("Current target: %f %f\n", m_navState.m_targetPos.m_x, m_navState.m_targetPos.m_y);
 
                     TurnToHeading(GetTargetHeading());
+
+                    //Set the direction of movement based on the robot's orientation towards home
+                    //m_navState.m_dir = m_nav.GetDirectionByAngle(m_pose.m_dir);
+
+                    //printf("Direction: %d\n", m_navState.m_dir);
                 } else {
                     Direction const prevDir = m_navState.m_dir;
 
@@ -437,53 +432,64 @@ void Robot::Run() {
         bool const isCollision = is_collision_detected();
 
         /* Obstacle avoidance logic */
-        if (is_obstacle_detected() && !IsWallExpected() || isCollision) {
-            if (isCollision) {
-                printf("Collision detected\n");
+        if (is_obstacle_detected() || isCollision) {
+            if (IsWallExpected()) {
+                printf("Wall detected\n");
 
-                Backward(0.5);
+                if (CorrectOdometry()) {
+                    //If reached the homing target, turn in the initial direction and put the robot at rest
+                    TurnToHeading(GetTargetHeading());
 
+                    //m_behaviour = REST;
+                }
             } else {
-                printf("Obstacle detected\n");
+                if (isCollision) {
+                    printf("Collision detected\n");
+
+                    Backward(0.5);
+
+                } else {
+                    printf("Obstacle detected\n");
+                }
+
+                /* If an obstacle is detected, we discard the next few target positions,
+                and instead generate new ones that move around the obstacle. */
+                //TODO: Generalize the condition
+                while (!m_targetQueue.empty() && (m_targetQueue.front().m_targetPos.m_x < m_pose.m_pos.m_x + 2 * OBSTACLE_SIZE)) {
+                    printf("Removing target: %f %f\n", m_targetQueue.front().m_targetPos.m_x, m_targetQueue.front().m_targetPos.m_y);
+                    m_targetQueue.pop_front();
+                }
+
+                NavigationState avoidState1 = m_navState;
+                avoidState1.m_targetPos = Vec2(0, OBSTACLE_SIZE).RotatedBy(m_pose.m_dir) + m_pose.m_pos;
+                avoidState1.m_targetType = AVOIDANCE;
+                avoidState1.m_dir++;
+
+                NavigationState avoidState2 = m_navState;
+                avoidState2.m_targetType = AVOIDANCE;
+                avoidState2.m_targetPos = Vec2(OBSTACLE_SIZE, 0).RotatedBy(m_pose.m_dir) + avoidState1.m_targetPos;
+
+                NavigationState avoidState3 = m_navState;
+                avoidState3.m_targetType = AVOIDANCE;
+                avoidState3.m_targetPos = Vec2(OBSTACLE_SIZE, 0).RotatedBy(m_pose.m_dir) + avoidState2.m_targetPos;
+
+                NavigationState avoidState4 = m_navState;
+                avoidState4.m_targetPos = Vec2(0, -OBSTACLE_SIZE).RotatedBy(m_pose.m_dir) + avoidState3.m_targetPos;
+                avoidState4.m_dir--;
+
+                m_targetQueue.push_front(avoidState4);
+                m_targetQueue.push_front(avoidState3);
+                m_targetQueue.push_front(avoidState2);
+                m_targetQueue.push_front(avoidState1);
+
+                m_navState = m_targetQueue.front();
+
+                printf("Current target: %f %f\n", m_navState.m_targetPos.m_x, m_navState.m_targetPos.m_y);
+
+                TurnToHeading(GetTargetHeading());
+
+                m_targetStartTime = wb_robot_get_time();
             }
-
-            /* If an obstacle is detected, we discard the next few target positions,
-            and instead generate new ones that move around the obstacle. */
-            //TODO: Generalize the condition
-            while (!m_targetQueue.empty() && (m_targetQueue.front().m_targetPos.m_x < m_pose.m_pos.m_x + 2 * OBSTACLE_SIZE)) {
-                printf("Removing target: %f %f\n", m_targetQueue.front().m_targetPos.m_x, m_targetQueue.front().m_targetPos.m_y);
-                m_targetQueue.pop_front();
-            }
-
-            NavigationState avoidState1 = m_navState;
-            avoidState1.m_targetPos = Vec2(0, OBSTACLE_SIZE).RotatedBy(m_pose.m_dir) + m_pose.m_pos;
-            avoidState1.m_targetType = AVOIDANCE;
-            avoidState1.m_dir++;
-
-            NavigationState avoidState2 = m_navState;
-            avoidState2.m_targetType = AVOIDANCE;
-            avoidState2.m_targetPos = Vec2(OBSTACLE_SIZE, 0).RotatedBy(m_pose.m_dir) + avoidState1.m_targetPos;
-
-            NavigationState avoidState3 = m_navState;
-            avoidState3.m_targetType = AVOIDANCE;
-            avoidState3.m_targetPos = Vec2(OBSTACLE_SIZE, 0).RotatedBy(m_pose.m_dir) + avoidState2.m_targetPos;
-
-            NavigationState avoidState4 = m_navState;
-            avoidState4.m_targetPos = Vec2(0, -OBSTACLE_SIZE).RotatedBy(m_pose.m_dir) + avoidState3.m_targetPos;
-            avoidState4.m_dir--;
-
-            m_targetQueue.push_front(avoidState4);
-            m_targetQueue.push_front(avoidState3);
-            m_targetQueue.push_front(avoidState2);
-            m_targetQueue.push_front(avoidState1);
-
-            m_navState = m_targetQueue.front();
-
-            printf("Current target: %f %f\n", m_navState.m_targetPos.m_x, m_navState.m_targetPos.m_y);
-
-            TurnToHeading(GetTargetHeading());
-
-            m_targetStartTime = wb_robot_get_time();
         } else {
             /*int avoid_sensors[] = {
                 DISTANCE_SENSOR_FRONT,
