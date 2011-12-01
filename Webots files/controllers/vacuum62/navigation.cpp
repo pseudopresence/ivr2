@@ -97,6 +97,8 @@ int Navigation::SetNextSpiralTarget(NavigationState& _state) {
             }
 
             Vec2 newTargetPos = Vec2(targetX, targetY);
+            
+            printf("Target:%f %f\n", targetX, targetY);
 
             _state.m_offset = m_offset;
             _state.m_targetPos = newTargetPos;

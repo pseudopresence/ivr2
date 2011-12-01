@@ -49,8 +49,9 @@ private:
     int m_obstacleCount;
     Direction m_returnDirection;
     
-    bool fitInArea(double _offset, Vec2 _target);
+    bool fitInArea(double _offset, Direction _dir, Vec2& _target);
     void removeTargets(Vec2 _limit, Direction _dir);
+    Vec2 moveTarget(Vec2 _target, Direction _current, double _v, double _h);
     void avoidObstacle(bool _turn);    
     void generateHomingTargets();
 public:

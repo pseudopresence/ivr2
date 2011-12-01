@@ -12,8 +12,8 @@ WorldInfo {
   title "LIS-EPFL Blimp"
 }
 Viewpoint {
-  orientation 0.0314815 0.988039 0.150957 3.62842
-  position -5.62951 5.84543 -9.73272
+  orientation 0.0484584 0.968645 0.243679 3.57179
+  position -5.19964 7.00744 -10.116
 }
 Background {
 }
