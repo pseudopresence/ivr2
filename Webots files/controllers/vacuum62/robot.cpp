@@ -25,7 +25,9 @@ static const char *distance_sensors_name[DISTANCE_SENSORS_NUMBER] = {
     "dist_front_right_1",
     "dist_front_right_2",
     "dist_front_right_3",
-    "dist_right"
+    "dist_right",
+    "dist_right_1",
+    "dist_right_2"
 };
 
 static WbDeviceTag leds[LEDS_NUMBER];
@@ -113,20 +115,16 @@ static bool is_obstacle_detected() {
     return false;
 }
 
-/*static bool is_there_a_distance_at_left() {
-    return !((wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_LEFT]) > 0.0) &&
-            (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_LEFT]) > 0.0));
+static bool is_obstacle_at_left(double _distance) {
+    return (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_LEFT]) < _distance);
 }
 
-static bool is_there_a_distance_at_right() {
-    return !((wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]) > 0.0) &&
-            (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_RIGHT]) > 0.0));
+static bool is_obstacle_at_right(double _distance) {
+    printf("Right: %f\n", wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]));
+    return (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT]) < _distance)
+            || (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT_1]) < _distance)
+            || (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_RIGHT_2]) < _distance);
 }
-
-static bool is_there_a_distance_at_front() {
-    return !((wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_LEFT]) > 0.0) &&
-            (wb_distance_sensor_get_value(distance_sensors[DISTANCE_SENSOR_FRONT_RIGHT]) > 0.0));
-}*/
 
 
 Pose::Pose(Vec2 const _pos, double const _dir) :
@@ -139,7 +137,7 @@ void Pose::Update(double const _turn, double const _distance) {
     // TODO do we get a better estimate using the previous direction to update position, or the new one? Or an average?
     m_pos += Vec2::FromDirLen(m_dir, _distance);
 
-    //printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf\n", m_pos.m_x, m_pos.m_y, m_dir * 180 / M_PI);
+    printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf\n", m_pos.m_x, m_pos.m_y, m_dir * 180 / M_PI);
 }
 
 Robot::Robot(Vec2 const _pos, double _offset, double _dir) :
@@ -149,7 +147,10 @@ m_navState(RIGHT, _offset, _pos),
 m_behaviour(REST),
 m_nav(),
 m_targetQueue(),
-m_targetStartTime(0) {
+m_targetStartTime(0),
+m_prevTargetType(NORMAL),
+m_obstacleCount(0),
+m_returnDirection (RIGHT) {
 }
 
 void Robot::Init() {
@@ -371,45 +372,152 @@ bool Robot::IsWallExpected() {
     }
 }
 
+bool Robot::fitInArea(double _offset, Vec2 _target)
+{
+    if ((_target.m_y > _offset) && ((MAX_ROOM_SIZE - _target.m_y) > _offset)
+            && (_target.m_x > _offset) && ((MAX_ROOM_SIZE - _target.m_x) > _offset))
+    {
+        return true;
+    }
+    
+    return false;
+}
+
+void Robot::removeTargets(Vec2 _limit, Direction _dir)
+{
+    while (!m_targetQueue.empty() 
+            && ((_dir == UP) && (m_targetQueue.front().m_targetPos.m_x <= _limit.m_x) 
+            ||  (_dir == LEFT) && (m_targetQueue.front().m_targetPos.m_y <= _limit.m_y)
+            ||  (_dir == DOWN) && (m_targetQueue.front().m_targetPos.m_x >= _limit.m_x)
+            ||  (_dir == RIGHT) && (m_targetQueue.front().m_targetPos.m_y >= _limit.m_y))) {
+        
+        printf("Removing target: %f %f\n", m_targetQueue.front().m_targetPos.m_x, m_targetQueue.front().m_targetPos.m_y);
+        m_targetQueue.pop_front();
+    }
+}
+
+void Robot::avoidObstacle(bool _turn)
+{
+    /* If an obstacle is detected, we discard the next few target positions,
+    and instead generate new ones that move around the obstacle. */  
+    double dir;
+    bool isRemoved = false;
+    Direction initialDirection;
+
+    NavigationState avoidState1 = m_navState;
+    NavigationState avoidState2 = m_navState;
+    NavigationState avoidState3 = m_navState;
+    NavigationState avoidState4 = m_navState;
+    
+    if (_turn)
+    {
+        m_obstacleCount = 0;
+        initialDirection = m_navState.m_dir;        
+        m_returnDirection = (Direction)wrap((int)initialDirection - 1, 0, 3);
+        
+        dir = m_pose.m_dir;
+        avoidState1.m_targetPos = Vec2(0, OBSTACLE_SIZE).RotatedBy(m_pose.m_dir) + m_pose.m_pos;        
+    }
+    else
+    {
+        m_obstacleCount++;
+        dir = wrap(m_pose.m_dir - M_PI / 2, 0.0, 2 * M_PI);
+        avoidState1.m_targetPos = Vec2(OBSTACLE_SIZE, 0).RotatedBy(m_pose.m_dir) + m_pose.m_pos;
+    }    
+    
+    avoidState1.m_dir++;
+    
+    avoidState2.m_targetPos = Vec2(OBSTACLE_SIZE, 0).RotatedBy(dir) + avoidState1.m_targetPos;
+
+    avoidState3.m_targetPos = Vec2(OBSTACLE_SIZE, 0).RotatedBy(dir) + avoidState2.m_targetPos;
+    
+    avoidState4.m_targetPos = Vec2(0, -(m_obstacleCount + 1) * OBSTACLE_SIZE).RotatedBy(dir) + avoidState3.m_targetPos;
+    avoidState4.m_dir--;
+    
+    avoidState1.m_targetType = AVOIDANCE;
+    avoidState2.m_targetType = AVOIDANCE;
+    avoidState3.m_targetType = AVOIDANCE;
+
+    if ((avoidState3.m_dir != m_returnDirection) && fitInArea(m_navState.m_offset, avoidState4.m_targetPos))
+    {        
+        removeTargets(avoidState4.m_targetPos, initialDirection);
+        isRemoved = true;
+        
+        m_targetQueue.push_front(avoidState4);
+    }
+    
+    if (fitInArea(m_navState.m_offset, avoidState3.m_targetPos))
+    {
+        if (!isRemoved)
+        {
+            removeTargets(avoidState3.m_targetPos, initialDirection);
+            isRemoved = true;
+        }
+        
+        m_targetQueue.push_front(avoidState3);
+    }
+    
+    if (fitInArea(m_navState.m_offset, avoidState2.m_targetPos))
+    {
+        if (!isRemoved)
+        {
+            removeTargets(avoidState2.m_targetPos, initialDirection);
+            isRemoved = true;
+        }
+        
+        m_targetQueue.push_front(avoidState2);
+    }
+    
+    if (fitInArea(m_navState.m_offset, avoidState1.m_targetPos))
+    {
+        if (!isRemoved)
+        {
+            removeTargets(avoidState1.m_targetPos, initialDirection);
+            isRemoved = true;
+        }
+        
+        m_targetQueue.push_front(avoidState1);
+    }
+   
+    m_navState = m_targetQueue.front();
+
+    printf("Current target: %f %f [dir=%d]\n", m_navState.m_targetPos.m_x, m_navState.m_targetPos.m_y, m_navState.m_dir);
+
+    if (_turn)
+    {
+        TurnToHeading(GetTargetHeading());
+    }
+}
+
 void Robot::generateHomingTargets() {
     int count = 0;
     int targetCount;
     int targetIndex;
     double distance;
-    Vec2* targets = m_nav.GetHomingTargets(m_pose.m_pos, m_home.m_pos, count);
-    
-    Vec2 target1;
-    Vec2 target2;
-    Vec2 target3;
+    Vec2 targets[3];
+    m_nav.GetHomingTargets(targets, m_pose.m_pos, m_home.m_pos, count);
    
 
     NavigationState navState(m_navState);
     navState.m_offset = 0;
     navState.m_targetType = HOME;
 
-    if (count > 2) {
-        target1 = targets[0];
-        target2 = targets[1];
-        target3 = targets[3];
-        
+    if (count > 2) {        
         for (int i = 0; i < count - 1; i++) {
             targetCount = NAV_TARGET_COUNT;
             targetIndex = 1;
             distance = 0;           
 
-            m_nav.SetNextHomingTarget(navState, target1, target2, distance, targetIndex, targetCount);
+            m_nav.SetNextHomingTarget(navState, targets[i], targets[i + 1], distance, targetIndex, targetCount);
 
             if (targetCount > 0) {
                 m_targetQueue.push_back(navState);
 
                 for (int j = 2; j < targetCount + 1; j++) {
-                    m_nav.SetNextHomingTarget(navState, target1, target2, distance, j, targetCount);
+                    m_nav.SetNextHomingTarget(navState, targets[i], targets[i + 1], distance, j, targetCount);
                     m_targetQueue.push_back(navState);
                 }
-            }
-            
-            target1 = target2;
-            target2 = target3;
+            }            
         }
     }
 }
@@ -421,7 +529,7 @@ void Robot::Run() {
 
     while (m_behaviour != REST) {
         /* Navigation logic */
-        if (HasReachedTarget() /*|| wb_robot_get_time() - m_targetStartTime > TARGET_TIMEOUT*/) {
+        if (HasReachedTarget() || (wb_robot_get_time() - m_targetStartTime > TARGET_TIMEOUT)) {
             printf("Target reached\n");
 
             m_targetQueue.pop_front();
@@ -441,17 +549,33 @@ void Robot::Run() {
             }
 
             if (!m_targetQueue.empty()) {
-                Direction const prevDir = m_navState.m_dir;
+                m_prevDirection = m_navState.m_dir;
+                m_prevTargetType = m_navState.m_targetType;
 
                 m_navState = m_targetQueue.front();
 
-                printf("Current target: %f %f\n", m_navState.m_targetPos.m_x, m_navState.m_targetPos.m_y);
+                printf("Current target: %f %f [dir=%d]\n", m_navState.m_targetPos.m_x, m_navState.m_targetPos.m_y, m_navState.m_dir);
 
-                if (m_navState.m_dir != prevDir) {
-                    //If ready to start in the new direction on the spiral, turn in that direction
-                    printf("Turning\n");
+                if (m_navState.m_dir != m_prevDirection) {                    
+                    if (((m_navState.m_targetType == AVOIDANCE) || (m_navState.m_dir == (Direction)wrap((int)m_prevDirection - 1, 0, 3)) && (m_prevTargetType == AVOIDANCE))
+                            && is_obstacle_at_right(DANGER_DISTANCE))
+                    {
+                        m_prevDirection = m_navState.m_dir;
+                        m_prevTargetType = m_navState.m_targetType;                        
+                        avoidObstacle(false);
+                    }
+//                    else if ((m_navState.m_dir == (Direction)wrap((int)m_prevDirection - 1, 0, 3)) 
+//                            && (m_prevTargetType == AVOIDANCE)
+//                            && is_obstacle_at_right(m_pose.m_pos.m_y - m_navState.m_targetPos.m_y + 2 * TARGET_PRECISION))
+//                    {
+//                        m_targetQueue.pop_front();
+//                    }
+                    else {
+                        //If ready to start in the new direction on the spiral, turn in that direction
+                        printf("Turning\n");
 
-                    TurnToHeading(GetTargetHeading());
+                        TurnToHeading(GetTargetHeading());
+                    }
                 }
 
                 m_targetStartTime = wb_robot_get_time();
@@ -476,41 +600,7 @@ void Robot::Run() {
                 printf("Obstacle detected\n");
             }
 
-            /* If an obstacle is detected, we discard the next few target positions,
-            and instead generate new ones that move around the obstacle. */
-            //TODO: Generalize the condition
-            while (!m_targetQueue.empty() && (m_targetQueue.front().m_targetPos.m_x < m_pose.m_pos.m_x + 2 * OBSTACLE_SIZE)) {
-                printf("Removing target: %f %f\n", m_targetQueue.front().m_targetPos.m_x, m_targetQueue.front().m_targetPos.m_y);
-                m_targetQueue.pop_front();
-            }
-
-            NavigationState avoidState1 = m_navState;
-            avoidState1.m_targetPos = Vec2(0, OBSTACLE_SIZE).RotatedBy(m_pose.m_dir) + m_pose.m_pos;
-            avoidState1.m_targetType = AVOIDANCE;
-            avoidState1.m_dir++;
-
-            NavigationState avoidState2 = m_navState;
-            avoidState2.m_targetType = AVOIDANCE;
-            avoidState2.m_targetPos = Vec2(OBSTACLE_SIZE, 0).RotatedBy(m_pose.m_dir) + avoidState1.m_targetPos;
-
-            NavigationState avoidState3 = m_navState;
-            avoidState3.m_targetType = AVOIDANCE;
-            avoidState3.m_targetPos = Vec2(OBSTACLE_SIZE, 0).RotatedBy(m_pose.m_dir) + avoidState2.m_targetPos;
-
-            NavigationState avoidState4 = m_navState;
-            avoidState4.m_targetPos = Vec2(0, -OBSTACLE_SIZE).RotatedBy(m_pose.m_dir) + avoidState3.m_targetPos;
-            avoidState4.m_dir--;
-
-            m_targetQueue.push_front(avoidState4);
-            m_targetQueue.push_front(avoidState3);
-            m_targetQueue.push_front(avoidState2);
-            m_targetQueue.push_front(avoidState1);
-
-            m_navState = m_targetQueue.front();
-
-            printf("Current target: %f %f\n", m_navState.m_targetPos.m_x, m_navState.m_targetPos.m_y);
-
-            TurnToHeading(GetTargetHeading());
+            avoidObstacle(!((m_navState.m_targetType == AVOIDANCE) || (m_navState.m_dir == (Direction)wrap((int)m_prevDirection - 1, 0, 3)) && (m_prevTargetType == AVOIDANCE)));
 
             m_targetStartTime = wb_robot_get_time();
         } else {

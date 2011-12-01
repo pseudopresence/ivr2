@@ -37,7 +37,7 @@
 /* Obstacle avoidance constants */
 #define TARGET_TIMEOUT 3
 #define DANGER_DISTANCE 0.15
-#define OBSTACLE_SIZE 0.8 //estimated min obstacle size that takes into account distance between chair legs
+#define OBSTACLE_SIZE 0.3 //estimated min obstacle size that takes into account distance between chair legs
 
 /* Intervals between sensors */
 #define FRONT_SENSOR_INTERVAL_X 0.1675
@@ -48,7 +48,7 @@
 #define BUMPER_LEFT 0
 #define BUMPER_RIGHT 1
 
-#define DISTANCE_SENSORS_NUMBER 9
+#define DISTANCE_SENSORS_NUMBER 11
 #define DISTANCE_SENSOR_LEFT 0
 #define DISTANCE_SENSOR_FRONT_LEFT_3 1
 #define DISTANCE_SENSOR_FRONT_LEFT_2 2
@@ -58,6 +58,8 @@
 #define DISTANCE_SENSOR_FRONT_RIGHT_2 6
 #define DISTANCE_SENSOR_FRONT_RIGHT_3 7
 #define DISTANCE_SENSOR_RIGHT 8
+#define DISTANCE_SENSOR_RIGHT_1 9
+#define DISTANCE_SENSOR_RIGHT_2 10
 
 #define LEDS_NUMBER 3
 #define LED_ON 0

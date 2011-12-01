@@ -174,30 +174,24 @@ void Navigation::SetNextHomingTarget(NavigationState& _state, Vec2 _start, Vec2 
     }
 }
 
-Vec2* Navigation::GetHomingTargets(Vec2 _current, Vec2 _home, int& count) {
-    Vec2* result;
-    Vec2 targets[3]; //We will just use one intermediate target
-    result = targets;
-
-    targets[0] = _current;
+void Navigation::GetHomingTargets(Vec2* _results, Vec2 _current, Vec2 _home, int& count) {
+    _results[0] = _current;
 
     if (fabs(_home.m_x - _current.m_x) <= fabs(_home.m_y - _current.m_y)) {
-        targets[1].m_x = _current.m_x;
-        targets[1].m_y = _home.m_y;
+        _results[1].m_x = _current.m_x;
+        _results[1].m_y = _home.m_y;
     } else {
-        targets[1].m_x = _home.m_x;
-        targets[1].m_y = _current.m_y;
+        _results[1].m_x = _home.m_x;
+        _results[1].m_y = _current.m_y;
     }
 
-    targets[2] = _home;
+    _results[2] = _home;
     
-    printf("Homing target %d: %f %f\n", 1, targets[0].m_x, targets[0].m_y);
-    printf("Homing target %d: %f %f\n", 2, targets[1].m_x, targets[1].m_y);
-    printf("Homing target %d: %f %f\n", 3, targets[2].m_x, targets[2].m_y);
+    printf("Homing target %d: %f %f\n", 1, _results[0].m_x, _results[0].m_y);
+    printf("Homing target %d: %f %f\n", 2, _results[1].m_x, _results[1].m_y);
+    printf("Homing target %d: %f %f\n", 3, _results[2].m_x, _results[2].m_y);
 
     count = 3;
-
-    return result;
 }
 
 Direction Navigation::GetDirectionByAngle(double angle) {

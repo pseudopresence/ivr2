@@ -44,7 +44,14 @@ private:
     Navigation m_nav;
     std::deque<NavigationState> m_targetQueue;
     double m_targetStartTime;
+    Direction m_prevDirection;
+    TargetType m_prevTargetType;
+    int m_obstacleCount;
+    Direction m_returnDirection;
     
+    bool fitInArea(double _offset, Vec2 _target);
+    void removeTargets(Vec2 _limit, Direction _dir);
+    void avoidObstacle(bool _turn);    
     void generateHomingTargets();
 public:
 
