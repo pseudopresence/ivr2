@@ -56,7 +56,9 @@ public:
     /* Calculates the coordinates of the next target position
        and returns the index of the target in the direction of movement
      */
-    int SetNextTarget(NavigationState& _state);
+    int SetNextSpiralTarget(NavigationState& _state);
+    void SetNextHomingTarget(NavigationState& _state, Vec2 _start, Vec2 _end, double& _distance, int _index, int& _count);
+    Vec2* GetHomingTargets(Vec2 _current, Vec2 _home, int& count);
     Direction GetDirectionByAngle(double angle);
 };
 

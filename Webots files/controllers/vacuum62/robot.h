@@ -44,6 +44,8 @@ private:
     Navigation m_nav;
     std::deque<NavigationState> m_targetQueue;
     double m_targetStartTime;
+    
+    void generateHomingTargets();
 public:
 
     Robot(Vec2 const _pos, double _offset, double _dir);

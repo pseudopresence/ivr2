@@ -3,8 +3,11 @@
   <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
     <df name="vacuum62" root=".">
       <in>constants.h</in>
+      <in>navigation.cpp</in>
       <in>navigation.h</in>
+      <in>pid.cpp</in>
       <in>pid.h</in>
+      <in>robot.cpp</in>
       <in>robot.h</in>
       <in>util.h</in>
       <in>vacuum62.cpp</in>

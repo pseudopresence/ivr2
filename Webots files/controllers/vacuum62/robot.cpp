@@ -166,7 +166,7 @@ void Robot::Init() {
     /* Generate target path */
     NavigationState navState(m_navState);
 
-    while ((navState.m_offset < MAX_ROOM_SIZE / 2) && (m_nav.SetNextTarget(navState) > 0)) {
+    while ((navState.m_offset < MAX_ROOM_SIZE / 2) && (m_nav.SetNextSpiralTarget(navState) > 0)) {
         m_targetQueue.push_back(navState);
     }
 
@@ -338,7 +338,7 @@ bool Robot::HasReachedTarget() {
 
     double dd;
 
-    if (m_navState.m_targetType == NORMAL) {
+    if (m_navState.m_targetType != AVOIDANCE) {
         dd = (targetPos - curPos).GetLengthSquared();
     } else {
         dd = (targetPos - curPos).GetLength();
@@ -371,6 +371,49 @@ bool Robot::IsWallExpected() {
     }
 }
 
+void Robot::generateHomingTargets() {
+    int count = 0;
+    int targetCount;
+    int targetIndex;
+    double distance;
+    Vec2* targets = m_nav.GetHomingTargets(m_pose.m_pos, m_home.m_pos, count);
+    
+    Vec2 target1;
+    Vec2 target2;
+    Vec2 target3;
+   
+
+    NavigationState navState(m_navState);
+    navState.m_offset = 0;
+    navState.m_targetType = HOME;
+
+    if (count > 2) {
+        target1 = targets[0];
+        target2 = targets[1];
+        target3 = targets[3];
+        
+        for (int i = 0; i < count - 1; i++) {
+            targetCount = NAV_TARGET_COUNT;
+            targetIndex = 1;
+            distance = 0;           
+
+            m_nav.SetNextHomingTarget(navState, target1, target2, distance, targetIndex, targetCount);
+
+            if (targetCount > 0) {
+                m_targetQueue.push_back(navState);
+
+                for (int j = 2; j < targetCount + 1; j++) {
+                    m_nav.SetNextHomingTarget(navState, target1, target2, distance, j, targetCount);
+                    m_targetQueue.push_back(navState);
+                }
+            }
+            
+            target1 = target2;
+            target2 = target3;
+        }
+    }
+}
+
 void Robot::Run() {
     m_behaviour = SWEEPING;
 
@@ -381,50 +424,40 @@ void Robot::Run() {
         if (HasReachedTarget() /*|| wb_robot_get_time() - m_targetStartTime > TARGET_TIMEOUT*/) {
             printf("Target reached\n");
 
-            if (m_behaviour != HOMING) {
+            m_targetQueue.pop_front();
 
-                m_targetQueue.pop_front();
+            if (m_targetQueue.empty()) {
+                if (m_behaviour == HOMING) {
+                    //If reached the homing target, turn in the initial direction and put the robot at rest
+                    TurnToHeading(m_home.m_dir);
 
-                if (m_targetQueue.empty()) {
-                    //If the robot is already covering the next target (spiral finished), switch to homing behaviour
+                    m_behaviour = REST;
+                } else {
                     printf("Homing\n");
                     m_behaviour = HOMING;
 
-                    m_navState.m_targetPos = m_home.m_pos;
-                    m_navState.m_targetType = HOME;
+                    generateHomingTargets();
+                }
+            }
 
-                    printf("Current target: %f %f\n", m_navState.m_targetPos.m_x, m_navState.m_targetPos.m_y);
+            if (!m_targetQueue.empty()) {
+                Direction const prevDir = m_navState.m_dir;
+
+                m_navState = m_targetQueue.front();
+
+                printf("Current target: %f %f\n", m_navState.m_targetPos.m_x, m_navState.m_targetPos.m_y);
+
+                if (m_navState.m_dir != prevDir) {
+                    //If ready to start in the new direction on the spiral, turn in that direction
+                    printf("Turning\n");
 
                     TurnToHeading(GetTargetHeading());
-
-                    //Set the direction of movement based on the robot's orientation towards home
-                    //m_navState.m_dir = m_nav.GetDirectionByAngle(m_pose.m_dir);
-
-                    //printf("Direction: %d\n", m_navState.m_dir);
-                } else {
-                    Direction const prevDir = m_navState.m_dir;
-
-                    m_navState = m_targetQueue.front();
-
-                    printf("Current target: %f %f\n", m_navState.m_targetPos.m_x, m_navState.m_targetPos.m_y);
-
-                    if (m_navState.m_dir != prevDir) {
-                        //If ready to start in the new direction on the spiral, turn in that direction
-                        printf("Turning\n");
-
-                        TurnToHeading(GetTargetHeading());
-                    }
-
-                    m_targetStartTime = wb_robot_get_time();
                 }
 
-            } else {
-                //If reached the homing target, turn in the initial direction and put the robot at rest
-                TurnToHeading(m_home.m_dir);
-
-                m_behaviour = REST;
+                m_targetStartTime = wb_robot_get_time();
             }
-        } else if ((m_behaviour == HOMING) || (m_navState.m_offset > 2.5)) {
+        }//TODO: REMOVE THIS
+        else if ((m_behaviour == HOMING) || (m_navState.m_offset > 2.5)) {
             //TurnToHeading(GetTargetHeading());
             printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf\n", m_pose.m_pos.m_x, m_pose.m_pos.m_y, m_pose.m_dir * 180 / M_PI);
         }
@@ -432,64 +465,54 @@ void Robot::Run() {
         bool const isCollision = is_collision_detected();
 
         /* Obstacle avoidance logic */
-        if (is_obstacle_detected() || isCollision) {
-            if (IsWallExpected()) {
-                printf("Wall detected\n");
+        if (is_obstacle_detected() && !IsWallExpected() || isCollision) {
 
-                if (CorrectOdometry()) {
-                    //If reached the homing target, turn in the initial direction and put the robot at rest
-                    TurnToHeading(GetTargetHeading());
+            if (isCollision) {
+                printf("Collision detected\n");
 
-                    //m_behaviour = REST;
-                }
+                Backward(0.5);
+
             } else {
-                if (isCollision) {
-                    printf("Collision detected\n");
-
-                    Backward(0.5);
-
-                } else {
-                    printf("Obstacle detected\n");
-                }
-
-                /* If an obstacle is detected, we discard the next few target positions,
-                and instead generate new ones that move around the obstacle. */
-                //TODO: Generalize the condition
-                while (!m_targetQueue.empty() && (m_targetQueue.front().m_targetPos.m_x < m_pose.m_pos.m_x + 2 * OBSTACLE_SIZE)) {
-                    printf("Removing target: %f %f\n", m_targetQueue.front().m_targetPos.m_x, m_targetQueue.front().m_targetPos.m_y);
-                    m_targetQueue.pop_front();
-                }
-
-                NavigationState avoidState1 = m_navState;
-                avoidState1.m_targetPos = Vec2(0, OBSTACLE_SIZE).RotatedBy(m_pose.m_dir) + m_pose.m_pos;
-                avoidState1.m_targetType = AVOIDANCE;
-                avoidState1.m_dir++;
-
-                NavigationState avoidState2 = m_navState;
-                avoidState2.m_targetType = AVOIDANCE;
-                avoidState2.m_targetPos = Vec2(OBSTACLE_SIZE, 0).RotatedBy(m_pose.m_dir) + avoidState1.m_targetPos;
-
-                NavigationState avoidState3 = m_navState;
-                avoidState3.m_targetType = AVOIDANCE;
-                avoidState3.m_targetPos = Vec2(OBSTACLE_SIZE, 0).RotatedBy(m_pose.m_dir) + avoidState2.m_targetPos;
-
-                NavigationState avoidState4 = m_navState;
-                avoidState4.m_targetPos = Vec2(0, -OBSTACLE_SIZE).RotatedBy(m_pose.m_dir) + avoidState3.m_targetPos;
-                avoidState4.m_dir--;
-
-                m_targetQueue.push_front(avoidState4);
-                m_targetQueue.push_front(avoidState3);
-                m_targetQueue.push_front(avoidState2);
-                m_targetQueue.push_front(avoidState1);
-
-                m_navState = m_targetQueue.front();
-
-                printf("Current target: %f %f\n", m_navState.m_targetPos.m_x, m_navState.m_targetPos.m_y);
-
-                TurnToHeading(GetTargetHeading());
-
-                m_targetStartTime = wb_robot_get_time();
+                printf("Obstacle detected\n");
             }
+
+            /* If an obstacle is detected, we discard the next few target positions,
+            and instead generate new ones that move around the obstacle. */
+            //TODO: Generalize the condition
+            while (!m_targetQueue.empty() && (m_targetQueue.front().m_targetPos.m_x < m_pose.m_pos.m_x + 2 * OBSTACLE_SIZE)) {
+                printf("Removing target: %f %f\n", m_targetQueue.front().m_targetPos.m_x, m_targetQueue.front().m_targetPos.m_y);
+                m_targetQueue.pop_front();
+            }
+
+            NavigationState avoidState1 = m_navState;
+            avoidState1.m_targetPos = Vec2(0, OBSTACLE_SIZE).RotatedBy(m_pose.m_dir) + m_pose.m_pos;
+            avoidState1.m_targetType = AVOIDANCE;
+            avoidState1.m_dir++;
+
+            NavigationState avoidState2 = m_navState;
+            avoidState2.m_targetType = AVOIDANCE;
+            avoidState2.m_targetPos = Vec2(OBSTACLE_SIZE, 0).RotatedBy(m_pose.m_dir) + avoidState1.m_targetPos;
+
+            NavigationState avoidState3 = m_navState;
+            avoidState3.m_targetType = AVOIDANCE;
+            avoidState3.m_targetPos = Vec2(OBSTACLE_SIZE, 0).RotatedBy(m_pose.m_dir) + avoidState2.m_targetPos;
+
+            NavigationState avoidState4 = m_navState;
+            avoidState4.m_targetPos = Vec2(0, -OBSTACLE_SIZE).RotatedBy(m_pose.m_dir) + avoidState3.m_targetPos;
+            avoidState4.m_dir--;
+
+            m_targetQueue.push_front(avoidState4);
+            m_targetQueue.push_front(avoidState3);
+            m_targetQueue.push_front(avoidState2);
+            m_targetQueue.push_front(avoidState1);
+
+            m_navState = m_targetQueue.front();
+
+            printf("Current target: %f %f\n", m_navState.m_targetPos.m_x, m_navState.m_targetPos.m_y);
+
+            TurnToHeading(GetTargetHeading());
+
+            m_targetStartTime = wb_robot_get_time();
         } else {
             /*int avoid_sensors[] = {
                 DISTANCE_SENSOR_FRONT,
