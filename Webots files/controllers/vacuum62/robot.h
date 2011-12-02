@@ -45,9 +45,8 @@ private:
     std::deque<NavigationState> m_targetQueue;
     double m_targetStartTime;
     Direction m_prevDirection;
-    TargetType m_prevTargetType;
     int m_obstacleCount;
-    Direction m_returnDirection;
+    Direction m_initialDirection;
     
     bool fitInArea(double _offset, Direction _dir, Vec2& _target);
     void removeTargets(Vec2 _limit, Direction _dir);

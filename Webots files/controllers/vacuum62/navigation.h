@@ -34,6 +34,16 @@ inline Direction operator-- (Direction& _d, int)
   return _d;
 }
 
+inline Direction operator- (Direction const& _d, int const& _r)
+{
+  return (Direction)wrap((int)_d - _r, 0, 3);
+}
+
+inline Direction operator+ (Direction const& _d, int const& _r)
+{
+  return (Direction)wrap((int)_d + _r, 0, 3);
+}
+
 struct NavigationState {
     NavigationState(Direction const _dir, double const _offset, Vec2 const _targetPos);
 
