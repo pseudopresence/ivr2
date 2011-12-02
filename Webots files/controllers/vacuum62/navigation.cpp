@@ -171,7 +171,7 @@ void Navigation::SetNextHomingTarget(NavigationState& _state, Vec2 _start, Vec2 
                     break;
             }
             
-            // printf("Homing target %d: %f %f [direction=%d]\n", _index, _state.m_targetPos.m_x, _state.m_targetPos.m_y, _state.m_dir);
+            printf("Homing target %d: %f %f [direction=%d]\n", _index, _state.m_targetPos.m_x, _state.m_targetPos.m_y, _state.m_dir);
         }
     }
 }
@@ -189,9 +189,9 @@ void Navigation::GetHomingTargets(Vec2* _results, Vec2 _current, Vec2 _home, int
 
     _results[2] = _home;
     
-    // printf("Homing target %d: %f %f\n", 1, _results[0].m_x, _results[0].m_y);
-    // printf("Homing target %d: %f %f\n", 2, _results[1].m_x, _results[1].m_y);
-    // printf("Homing target %d: %f %f\n", 3, _results[2].m_x, _results[2].m_y);
+     printf("Homing target %d: %f %f\n", 1, _results[0].m_x, _results[0].m_y);
+     printf("Homing target %d: %f %f\n", 2, _results[1].m_x, _results[1].m_y);
+     printf("Homing target %d: %f %f\n", 3, _results[2].m_x, _results[2].m_y);
 
     count = 3;
 }

@@ -12,8 +12,8 @@ WorldInfo {
   title "LIS-EPFL Blimp"
 }
 Viewpoint {
-  orientation -0.0159794 0.982852 0.183704 3.03635
-  position 0.388644 5.25052 -12.7139
+  orientation -0.0211689 0.966238 0.256778 3.02938
+  position 0.367484 6.75345 -11.8114
 }
 Background {
 }
@@ -441,7 +441,7 @@ DEF CHAIR Solid {
   }
 }
 DEF CHAIR Solid {
-  translation 0.527303 0.914951 -0.381497
+  translation 0.475759 0.914951 -0.559274
   rotation -7.77165e-05 1 -7.73014e-06 -0.198293
   children [
     DEF CHAIRSEAT Transform {
@@ -623,7 +623,7 @@ DEF CHAIR Solid {
   }
 }
 DEF TABLE Solid {
-  translation 2 -0.014 -1.6
+  translation 0.0338398 -0.014 0.210106
   children [
     DEF TABLEELEMENT1 Transform {
       translation 0 0.615 0

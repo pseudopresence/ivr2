@@ -190,26 +190,26 @@ bool Robot::CorrectOdometry() {
     double const dirError = wrap(dirOffset + M_PI / 2 * (int) m_navState.m_dir, 0.0, 2 * M_PI) - m_pose.m_dir;
 
     //Correct robot's orientation estimate
-    m_pose.Update(wrap(dirError, -M_PI, M_PI), 0);
+    double const dirCorrected = m_pose.m_dir + wrap(dirError, -M_PI, M_PI);
 
     double distExpected = NAV_ROOM_SIZE;
     double targetOffset = 0;
 
     switch (m_navState.m_dir) {
         case UP:
-            distExpected = (distExpected - m_pose.m_pos.m_x) / cos(m_pose.m_dir);
+            distExpected = (distExpected - m_pose.m_pos.m_x) / cos(dirCorrected);
             targetOffset = m_navState.m_targetPos.m_x - m_pose.m_pos.m_x;
             break;
         case LEFT:
-            distExpected = (distExpected - m_pose.m_pos.m_y) / sin(m_pose.m_dir);
+            distExpected = (distExpected - m_pose.m_pos.m_y) / sin(dirCorrected);
             targetOffset = m_navState.m_targetPos.m_y - m_pose.m_pos.m_y;
             break;
         case DOWN:
-            distExpected = (distExpected - MAX_ROOM_SIZE + m_pose.m_pos.m_x) / -cos(m_pose.m_dir);
+            distExpected = (distExpected - MAX_ROOM_SIZE + m_pose.m_pos.m_x) / -cos(dirCorrected);
             targetOffset = m_pose.m_pos.m_x - m_navState.m_targetPos.m_x;
             break;
         case RIGHT:
-            distExpected = (distExpected - MAX_ROOM_SIZE + m_pose.m_pos.m_y) / -sin(m_pose.m_dir);
+            distExpected = (distExpected - MAX_ROOM_SIZE + m_pose.m_pos.m_y) / -sin(dirCorrected);
             targetOffset = m_pose.m_pos.m_y - m_navState.m_targetPos.m_y;
             break;
     }
@@ -219,17 +219,32 @@ bool Robot::CorrectOdometry() {
     printf("Measured distance error: %f\n", distError);
     
     double const precision = ((m_navState.m_targetType == AVOIDANCE) ? 4 : 2) * TARGET_PRECISION;
+    double offset = m_navState.m_offset;
+    
+    if ((m_navState.m_targetType == AVOIDANCE) && (m_navState.m_dir == RIGHT))
+    {
+        offset += ROBOT_DIAMETER;
+    }
 
-    if (distFront > WALL_OFFSET - ROBOT_RADIUS + m_navState.m_offset + precision) {
-        if (fabs(distError) > TARGET_PRECISION) {
-            m_pose.Update(0, distError);
+    if (distError < 0.5)
+    {
+        m_pose.Update(wrap(dirError, -M_PI, M_PI), 0);
+
+        if (distFront > WALL_OFFSET - ROBOT_RADIUS + offset + precision) {
+            if (fabs(distError) > TARGET_PRECISION) {
+                m_pose.Update(0, distError);
+            }
+
+            return false;
+        } else {
+            m_pose.Update(0, targetOffset);
+
+            return true;
         }
-        
+    }
+    else
+    {
         return false;
-    } else {
-        m_pose.Update(0, targetOffset);
-
-        return true;
     }
 }
 
@@ -305,6 +320,11 @@ void Robot::TurnToHeading(double const _heading) {
     printf("Turning to heading: %f\n", delta * 180 / M_PI);
 
     if (fabs(delta) > ANGLE_PRECISION) {
+//        if ((delta < 0) && is_obstacle_at_right(ROBOT_DIAMETER))
+//        {
+//            delta = 2 * M_PI - delta;
+//        }
+        
         Turn(delta);
     }
 }
@@ -368,12 +388,30 @@ bool Robot::IsWallExpected() {
 
 bool Robot::fitInArea(double _offset, Direction _dir, Vec2& _target)
 {
+    double _offsetR = _offset;
+    
+    printf("Type: %d Next target: %f %f [dir=%d]\n", m_navState.m_targetType, m_targetQueue.at(1).m_targetPos.m_x, m_targetQueue.at(1).m_targetPos.m_y, m_targetQueue.at(1).m_dir);
+    
+    if (m_initialDirection == RIGHT)
+    {
+        if ((m_navState.m_targetType == NORMAL) 
+            && ((m_targetQueue.size() < 2) || (m_targetQueue.at(1).m_dir == UP)))
+        {
+            _offset -= ROBOT_DIAMETER;
+        }
+        else
+        {
+            printf("Increasing offset\n");
+            _offsetR += ROBOT_DIAMETER;
+        }
+    }
+    
     switch (_dir)
     {
-        case RIGHT:
-            if (_target.m_y < _offset)
+        case RIGHT:            
+            if (_target.m_y < _offsetR)
             {
-                _target.m_y = _offset;
+                _target.m_y = _offsetR;
             }
             break;
         case UP:
@@ -398,8 +436,11 @@ bool Robot::fitInArea(double _offset, Direction _dir, Vec2& _target)
     
     printf("Fitted target: %f %f [offset=%f]\n", _target.m_x, _target.m_y, _offset);
     
-    if ((_target.m_y >= _offset - TARGET_PRECISION) && ((MAX_ROOM_SIZE - _target.m_y) >= _offset - TARGET_PRECISION)
-            && (_target.m_x >= _offset - TARGET_PRECISION) && ((MAX_ROOM_SIZE - _target.m_x) >= _offset - TARGET_PRECISION))
+    if ((_target.m_y >= _offsetR - TARGET_PRECISION) 
+            && ((MAX_ROOM_SIZE - _target.m_y) >= _offset - TARGET_PRECISION)
+            && (_target.m_x >= _offset - TARGET_PRECISION) 
+            && ((MAX_ROOM_SIZE - _target.m_x) >= _offset - TARGET_PRECISION)
+            && ((m_pose.m_pos - _target).GetLength() > ROBOT_RADIUS))
     {
         return true;
     }
@@ -528,20 +569,25 @@ void Robot::avoidObstacle(bool _turn)
     
     if (!isRemoved)
     {   
-        do
-        {
-            //If none of the avoidance targets was added (e.g. because they are out of range), give up on the target
-            printf("Removing target: %f %f\n", m_targetQueue.front().m_targetPos.m_x, m_targetQueue.front().m_targetPos.m_y);
-
-            m_targetQueue.pop_front();
-        }
-        while (m_targetQueue.front().m_dir == m_initialDirection);
+        m_targetQueue.clear();
+        m_behaviour = REST;
+        //generateHomingTargets();
         
-        printf("Previous direction: %d\n", m_prevDirection);
-        
-        m_navState.m_dir = m_prevDirection;
-        
-        CorrectOdometry();
+        printf("Rest\n");
+//        do
+//        {
+//            //If none of the avoidance targets was added (e.g. because they are out of range), give up on the target
+//            printf("Removing target: %f %f\n", m_targetQueue.front().m_targetPos.m_x, m_targetQueue.front().m_targetPos.m_y);
+//
+//            m_targetQueue.pop_front();
+//        }
+//        while (m_targetQueue.front().m_dir == m_initialDirection);
+//        
+//        printf("Previous direction: %d\n", m_prevDirection);
+//        
+//        m_navState.m_dir = m_prevDirection;
+//        
+//        CorrectOdometry();
         
         //removeTargets(m_navState.m_targetPos, m_navState.m_dir + 1);
         
@@ -599,7 +645,7 @@ void Robot::Run() {
 
     PassiveWait(0.5);
 
-    while (m_behaviour != REST) {
+    while ((m_behaviour != REST) && !m_targetQueue.empty()) {
         /* Navigation logic */
         if (HasReachedTarget() || (wb_robot_get_time() - m_targetStartTime > TARGET_TIMEOUT)) {
             // printf("Target reached\n");
@@ -629,9 +675,7 @@ void Robot::Run() {
 
                 if (m_navState.m_dir != m_prevDirection) {                    
                     if ((m_navState.m_targetType == AVOIDANCE) && is_obstacle_at_right(DANGER_DISTANCE))
-                    {
-//                        m_prevDirection = m_navState.m_dir;
-//                        m_prevTargetType = m_navState.m_targetType;                        
+                    {                     
                         avoidObstacle(false);
                     } else {
                         //If ready to start in the new direction on the spiral, turn in that direction
@@ -640,44 +684,56 @@ void Robot::Run() {
                         TurnToHeading(GetTargetHeading());
                     }
                 }
+                else if (wrap(GetEstimatedHeading() - GetTargetHeading(), 0.0, 2 * M_PI) > M_PI / 4)
+                {
+                    TurnToHeading(GetTargetHeading());
+                }   
 
                 m_targetStartTime = wb_robot_get_time();
             }
-        }//TODO: REMOVE THIS
-        else if ((m_behaviour == HOMING) || (m_navState.m_offset > 2.5)) {
-            // printf("X: %03.3lf, Y: %03.3lf, O: %03.3lf\n", m_pose.m_pos.m_x, m_pose.m_pos.m_y, m_pose.m_dir * 180 / M_PI);
         }
 
-        bool const isCollision = is_collision_detected();
+        if (!m_targetQueue.empty())
+        {
+            bool const isCollision = is_collision_detected();
 
-        /* Obstacle avoidance logic */
-        if (is_obstacle_detected() && !IsWallExpected() || isCollision) {
+            /* Obstacle avoidance logic */
+            if (is_obstacle_detected() || isCollision) {
 
-            if (isCollision) {
-                printf("Collision detected\n");
+                if (IsWallExpected())
+                {
+                    CorrectOdometry();
+                }
+                else
+                {
+                    if (isCollision) {
+                        printf("Collision detected\n");
 
-                Backward(0.5);
+                        Backward(0.5);
 
-            } else {
-                printf("Obstacle detected\n");
+                    } else {
+                        printf("Obstacle detected\n");
+                    }
+
+                    avoidObstacle(true);
+                    //avoidObstacle(!(m_navState.m_targetType == AVOIDANCE));
+
+                    m_targetStartTime = wb_robot_get_time();
+                }
+            } 
+            else {
+                double const l_goal = -1 * wrap(GetTargetHeading() - GetEstimatedHeading(), -M_PI, M_PI);
+
+                if (m_behaviour == HOMING) {
+                    // printf("Target: %f Estimated: %f Correction: %f\n", GetTargetHeading() * 180 / M_PI, GetEstimatedHeading() * 180 / M_PI, wrap(GetTargetHeading() - GetEstimatedHeading(), -M_PI, M_PI) *180 / M_PI);
+                }
+
+                Vec2 const m_goal = speedsFromControlParam(l_goal);
+
+                wb_differential_wheels_set_speed(MAX_SPEED * clamp(m_goal.m_x, -1, 1), MAX_SPEED * clamp(m_goal.m_y, -1, 1));
             }
 
-            avoidObstacle(true);
-            //avoidObstacle(!(m_navState.m_targetType == AVOIDANCE));
-
-            m_targetStartTime = wb_robot_get_time();
-        } else {
-            double const l_goal = -1 * wrap(GetTargetHeading() - GetEstimatedHeading(), -M_PI, M_PI);
-
-            if (m_behaviour == HOMING) {
-                // printf("Target: %f Estimated: %f Correction: %f\n", GetTargetHeading() * 180 / M_PI, GetEstimatedHeading() * 180 / M_PI, wrap(GetTargetHeading() - GetEstimatedHeading(), -M_PI, M_PI) *180 / M_PI);
-            }
-
-            Vec2 const m_goal = speedsFromControlParam(l_goal);
-
-            wb_differential_wheels_set_speed(MAX_SPEED * clamp(m_goal.m_x, -1, 1), MAX_SPEED * clamp(m_goal.m_y, -1, 1));
+            Step();
         }
-
-        Step();
     }
 }

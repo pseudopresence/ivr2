@@ -37,7 +37,7 @@
 /* Obstacle avoidance constants */
 #define TARGET_TIMEOUT 3
 #define DANGER_DISTANCE 0.15
-#define OBSTACLE_SIZE 0.3 //estimated min obstacle size that takes into account distance between chair legs
+#define OBSTACLE_SIZE 0.6 //estimated min obstacle size that takes into account distance between chair legs
 
 /* Intervals between sensors */
 #define FRONT_SENSOR_INTERVAL_X 0.1675
